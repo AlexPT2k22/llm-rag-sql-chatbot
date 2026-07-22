@@ -34,7 +34,7 @@ DOMAIN_GROUPS = {
     "plots_and_fields": {
         "db": "Operations",
         "desc": "Parcelas agrícolas, propriedades, geodados, variedades plantadas, culturas, áreas, armação, embardamento, rega, porta-enxerto, sistema de condução, modo de produção, unidades de gestão",
-        "prefixes": ["parcela", "propriedade", "unidade_gestao", "variedade", "v_parcela"],
+        "prefixes": ["parcela", "propriedade", "unidade_gestao", "variedade", "v_field"],
     },
     "phytopharmaceuticals": {
         "db": "Operations",
@@ -54,7 +54,7 @@ DOMAIN_GROUPS = {
     "plots_operations": {
         "db": "Plots",
         "desc": "Práticas culturais agrícolas: operações, caldas, fitofármacos, colheitas, rega, fertilização, monitorização, recursos humanos, equipamentos, riscos, custos, horas trabalhadas, empreiteiros, adubos",
-        "prefixes": ["pratica_cultural", "pratica_agricola", "grupo_pratica", "pc_", "view_", "v_pratica"],
+        "prefixes": ["pratica_cultural", "pratica_agricola", "grupo_pratica", "pc_", "view_", "v_plot"],
     },
     "resources": {
         "db": "Plots",
@@ -119,7 +119,7 @@ DOMAIN_GROUPS = {
     "cellar_views": {
         "db": "Cellar",
         "desc": "Views de operações de vinificação, volumes de vinho, perdas, consumíveis e calendário RH da adega: operações por lote e cuba, custos e horas, volumes por tipo de vinho e fase, perdas por fase, calendário de horas RH",
-        "prefixes": ["v_adega", "view_operacao", "view_historico"],
+        "prefixes": ["v_cellar", "view_operacao", "view_historico"],
     },
 
 }
@@ -736,7 +736,7 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
         scores = []
         for i, ex_vec in enumerate(self._few_shot_vectors):
             ex = _FEW_SHOT_EXAMPLES[i]
-            is_cellar_example = "Cellar" in ex.get("pattern", "") or "v_adega" in ex.get("sql", "")
+            is_cellar_example = "Cellar" in ex.get("pattern", "") or "v_cellar" in ex.get("sql", "")
             if is_adega and not is_cellar_example:
                 continue
             if not is_adega and is_cellar_example:

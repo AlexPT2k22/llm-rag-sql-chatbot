@@ -1,19 +1,19 @@
 """
-Benchmark do golden set da AgriTech.
-Cada pergunta é testada de forma isolada, sem histórico de sessão.
+Golden set benchmark for the SQL agent.
+Each question is tested in isolation, without session history.
 
-Uso:
+Usage:
   python benchmarks/eval_golden_set.py
-  python benchmarks/eval_golden_set.py --entidade 39 --ano 47
+  python benchmarks/eval_golden_set.py --entity 1 --year 2025
 
-Entidade 22, ano 42 usados por defeito — maior cobertura de dados.
-Substitui XX pelos valores reais da entidade:
-  - Propriedade: Propriedade [22001002]
-  - Parcela: Parcela [22001002.220010020017]
-  - RH: Agostinho Pinto Macedo
-  - Equipamento: NEW HOLLAND 109
-  - Fitofármaco: CUPRANTOL DUO
-  - Adubo: Nutrimais Granulado
+Default entity 1, year 2025 — use for reference.
+Replace mock values with your actual entity:
+  - Property: Quinta do Vale
+  - Plot: Plot A1
+  - HR: Worker Silva
+  - Equipment: Crawler Tractor X100
+  - Phytosanitary: AGRO-STAR
+  - Fertilizer: FertiGro 7-14-14
 """
 import sys, os, time, argparse, json, re
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -72,30 +72,30 @@ def llm_judge(question: str, answer: str, sql: str, judge_model: str) -> dict:
 
 # Valores reais para substituir XX
 DEFAULTS = {
-    "entidade":    22,
-    "ano":         42,
-    "propriedade": "Propriedade [22001002]",
-    "parcela":     "Parcela [22001002.220010020017]",
-    "rh":          "Agostinho Pinto Macedo",
-    "empreiteiro": "DF Sequeira",
-    "equipamento": "NEW HOLLAND 109",
-    "fitofarmaco": "CUPRANTOL DUO",
-    "adubo":       "Nutrimais Granulado",
-    # Cellar — entidade 8 (AgriTech 2), ano agrícola 35 (2025)
-    "cellar_entidade":   8,
-    "cellar_ano":        35,
-    "lote":             "DOC Tinto",
-    "cuba":             "Cuba 01",
-    "rh_cellar":         "Ana Rodrigues",
-    "consumivel":       "Garrafa 0.75 Geo",
-    "consumivel_enol":  "Gasóleo Simples",
+    "entidade":    1,
+    "ano":         1,
+    "propriedade": "Quinta do Vale",
+    "parcela":     "Parcela A1",
+    "rh":          "Worker Silva",
+    "empreiteiro": "Contractor A",
+    "equipamento": "Crawler Tractor X100",
+    "fitofarmaco": "AGRO-STAR",
+    "adubo":       "FertiGro 7-14-14",
+    # Cellar — entity 1, year 2025
+    "cellar_entidade":   1,
+    "cellar_ano":        2025,
+    "lote":             "DOC Red",
+    "cuba":             "Tank 01",
+    "rh_cellar":         "Worker Maria",
+    "consumivel":       "Bottle 0.75 Standard",
+    "consumivel_enol":  "Sulfur Dioxide Solution",
 }
 
 def build_golden_set(d):
     return [
         # Processo 1
         ("P1-01", f"Quais as culturas existentes e quais as respetivas áreas na {d['propriedade']}"),
-        ("P1-02",  "Qual a área da cultura vinha existente no concelho de Mesão Frio"),
+        ("P1-02",  "Qual a area da cultura vinha existente no concelho de Vila Real"),
         ("P1-03",  "Qual é a área das parcelas da cultura vinha e da variedade Touriga-Franca"),
         ("P1-04",  "Qual é a área de vinha com modo de produção Produção Integrada"),
         ("P1-05",  "Listar por parcela os sistemas de condução e as respetivas áreas das parcelas"),
