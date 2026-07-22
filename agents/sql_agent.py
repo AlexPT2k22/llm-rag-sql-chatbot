@@ -198,8 +198,12 @@ class SQLAgentTools:
         # Índice BM25
         from rank_bm25 import BM25Okapi
         self.bm25_docs = table_docs
-        self.bm25_index = BM25Okapi([doc.page_content.lower().split() for doc in table_docs])
-        print(f"  BM25 indexado: {len(table_docs)} documentos.")
+        if table_docs:
+            self.bm25_index = BM25Okapi([doc.page_content.lower().split() for doc in table_docs])
+            print(f"  BM25 indexado: {len(table_docs)} documentos.")
+        else:
+            self.bm25_index = None
+            print("  BM25 nao indexado: 0 tabelas disponiveis.")
 
         # Few-shot
         if _FEW_SHOT_EXAMPLES:
@@ -649,8 +653,14 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
             )
 
     def _hybrid_table_search(self, question: str, k: int = 8) -> list:
-        """BM25 + MMR híbrido 70/30 para o table vectorstore."""
+        """BM25 + MMR hibrido 70/30 para o table vectorstore."""
         import numpy as np
+
+        if self.bm25_index is None or not self.bm25_docs:
+            mmr_results = self.table_vectorstore.max_marginal_relevance_search(
+                question, k=k, fetch_k=k * 2
+            )
+            return mmr_results
 
         # BM25
         tokens = question.lower().split()
