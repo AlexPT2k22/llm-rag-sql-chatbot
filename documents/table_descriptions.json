@@ -1,0 +1,127 @@
+{
+  "Operations": {
+    "plot": {
+      "tipo": "Tabela",
+      "colunas": ["gid", "denomination", "total_area", "usable_area", "avg_altitude", "slope", "planting_year", "row_spacing", "inter_row_spacing", "status", "id_property"],
+      "descricao": "Stores vineyard plot data including area, altitude, slope, planting year, and spacing. Each plot belongs to a property. Example: plot 'Quinta Norte A1' with 2.5 ha, planted 2018.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Core business table for plot management queries."
+    },
+    "property": {
+      "tipo": "Tabela",
+      "colunas": ["gid", "denomination", "total_area", "id_entity"],
+      "descricao": "Stores property/farm information. Each property belongs to an entity and contains multiple plots. Example: property 'Quinta do Vale' with 15 ha total.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Core table for property-level queries and aggregations."
+    },
+    "v_field_base": {
+      "tipo": "View",
+      "colunas": ["id_plot", "plot_name", "total_area", "property_name", "id_entity", "municipality", "training_system", "irrigation_type", "rootstock", "conduction_system"],
+      "descricao": "Pre-joined view of plots with property, municipality, training system, irrigation, rootstock, and conduction system. Use for plot queries that need resolved text names.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Primary view for plot queries -- all text columns already resolved."
+    },
+    "v_field_crop_variety": {
+      "tipo": "View",
+      "colunas": ["id_plot", "plot_name", "property_name", "id_entity", "municipality", "crop_type", "variety", "crop_area", "production_mode"],
+      "descricao": "Pre-joined view of plots with crop types, grape varieties, and production modes. Use for variety and production mode queries.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Primary view for crop and variety queries."
+    }
+  },
+  "Plots": {
+    "cultural_practice": {
+      "tipo": "Tabela",
+      "colunas": ["gid", "start_date", "quantity_total_hours", "status", "id_plot", "id_practice_type"],
+      "descricao": "Central table for field operations (pruning, spraying, harvesting, etc.). Each practice is linked to a plot and has associated resources.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Core business table for field operation queries."
+    },
+    "resource": {
+      "tipo": "Tabela",
+      "colunas": ["gid", "denomination", "id_resource_type"],
+      "descricao": "Hub table for all resources: workers, equipment, fertilizers, phytopharmaceutical products. Each resource has a type.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Central resource table for practice resource queries."
+    },
+    "mv_plot_resource_full": {
+      "tipo": "MATERIALIZED VIEW",
+      "colunas": ["id_practice", "start_date", "n_hours", "practice_type", "plot_name", "property_name", "id_entity", "resource_type", "resource", "quantity", "total_cost", "variety"],
+      "descricao": "Materialized view joining cultural practices with all resources (HR, equipment, fertilizers, phytopharmaceuticals). Contains hours, costs, and plot/property info. Faster than v_plot_resource_full for repeated queries.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Primary materialized view for practice queries with all resources."
+    },
+    "v_plot_resource_full": {
+      "tipo": "View",
+      "colunas": ["id_practice", "start_date", "n_hours", "practice_type", "plot_name", "property_name", "id_entity", "resource_type", "resource", "quantity", "total_cost", "variety"],
+      "descricao": "Live view joining cultural practices with all resources. Same structure as mv_plot_resource_full but always up-to-date.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Live view alternative to materialized view."
+    },
+    "mv_calendar_hr": {
+      "tipo": "MATERIALIZED VIEW",
+      "colunas": ["resource", "month", "year", "total_hours", "days_worked", "id_entity"],
+      "descricao": "Monthly calendar of worker hours and days worked, grouped by month and year. Use for HR scheduling queries.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Calendar view for human resource planning."
+    },
+    "mv_calendar_equipment": {
+      "tipo": "MATERIALIZED VIEW",
+      "colunas": ["resource", "month", "year", "total_hours", "days_used", "id_entity"],
+      "descricao": "Monthly calendar of equipment usage hours, grouped by month and year. Use for equipment scheduling queries.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Calendar view for equipment planning."
+    }
+  },
+  "Cellar": {
+    "lot": {
+      "tipo": "Tabela",
+      "colunas": ["gid", "denomination", "id_wine", "id_phase", "id_cellar_entity"],
+      "descricao": "Central wine lot tracking table. Each lot has a wine type, current phase, and belongs to a cellar entity. Example: lot 'DOC Red 2024' currently in aging phase.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Core table for wine lot management."
+    },
+    "tank": {
+      "tipo": "Tabela",
+      "colunas": ["gid", "denomination", "total_capacity", "current_capacity", "material"],
+      "descricao": "Stores tank and barrel information for wine storage. Tanks have capacities and materials (stainless steel, oak).",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Core table for storage queries."
+    },
+    "v_cellar_operations": {
+      "tipo": "View",
+      "colunas": ["operation_type", "lot", "tank", "registration_date", "n_hours", "total_cost", "year", "id_entity"],
+      "descricao": "Pre-joined view of cellar operations with lot and tank names. Use for operation queries per lot, tank, or date.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Primary view for cellar operation queries."
+    },
+    "v_cellar_volumes": {
+      "tipo": "View",
+      "colunas": ["wine_type", "phase", "total_liters", "id_entity"],
+      "descricao": "Aggregated wine volumes by type and production phase. Use for inventory and stock queries.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Inventory view for wine volume queries."
+    },
+    "v_cellar_losses": {
+      "tipo": "View",
+      "colunas": ["loss_type", "lot", "registration_date", "hours", "total_cost", "id_entity"],
+      "descricao": "Aggregated wine losses by type, lot, and date. Use for loss analysis queries.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "View for wine loss tracking."
+    },
+    "v_cellar_consumables": {
+      "tipo": "View",
+      "colunas": ["consumable", "total_quantity_out", "avg_unit_cost", "id_entity"],
+      "descricao": "Aggregated consumable usage (bottles, corks, labels) by product type. Use for consumable inventory and cost queries.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "View for consumable tracking."
+    },
+    "v_cellar_hr_calendar": {
+      "tipo": "View",
+      "colunas": ["worker_name", "operation_type", "month", "year", "total_hours", "total_cost", "id_entity"],
+      "descricao": "Monthly calendar of worker hours in cellar operations. Use for HR scheduling in winemaking.",
+      "uso_chatbot": "sim",
+      "justificacao_uso": "Calendar view for cellar HR planning."
+    }
+  }
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "question": "What crops exist and what are their areas across entity properties?",
+    "sql": "SELECT property_name, plot_name, crop_type, variety, crop_area\nFROM v_field_crop_variety\nWHERE id_entity = {entity_id}\nORDER BY property_name, crop_type, variety\nLIMIT 100"
+  },
+  {
+    "question": "What is the total vineyard area in the municipality of Vila Real?",
+    "sql": "SELECT crop_type, SUM(crop_area) AS total_area\nFROM v_field_crop_variety\nWHERE id_entity = {entity_id} AND crop_type ILIKE '%Vine%' AND municipality ILIKE '%Vila Real%'\nGROUP BY crop_type\nLIMIT 50"
+  },
+  {
+    "question": "List the grape varieties planted with Touriga Nacional and their areas",
+    "sql": "SELECT property_name, plot_name, crop_type, variety, crop_area\nFROM v_field_crop_variety\nWHERE id_entity = {entity_id} AND variety ILIKE '%Touriga Nacional%'\nORDER BY crop_area DESC NULLS LAST\nLIMIT 50"
+  },
+  {
+    "question": "What is the vineyard area under Integrated Production?",
+    "sql": "SELECT property_name, plot_name, crop_type, variety, crop_area, production_mode\nFROM v_field_crop_variety\nWHERE id_entity = {entity_id} AND production_mode ILIKE '%Integrated Production%'\nORDER BY crop_area DESC NULLS LAST\nLIMIT 50"
+  },
+  {
+    "question": "What types of irrigation exist organized by property?",
+    "sql": "SELECT property_name, plot_name, total_area, irrigation_type\nFROM v_field_base\nWHERE id_entity = {entity_id} AND irrigation_type IS NOT NULL\nORDER BY property_name, plot_name\nLIMIT 50"
+  },
+  {
+    "question": "List plots with training system and area",
+    "sql": "SELECT plot_name, training_system, total_area\nFROM v_field_base\nWHERE id_entity = {entity_id} AND training_system IS NOT NULL\nORDER BY total_area DESC NULLS LAST\nLIMIT 50"
+  },
+  {
+    "question": "List phytosanitary applications during 2025",
+    "sql": "SELECT practice_type, resource, plot_name, property_name, quantity, total_cost, start_date\nFROM mv_plot_resource_full\nWHERE resource_type = 'Cultural Practice Phyto' AND id_entity = {entity_id} AND EXTRACT(YEAR FROM start_date) = 2025\nORDER BY start_date DESC NULLS LAST\nLIMIT 50"
+  },
+  {
+    "question": "Where was the product AGRO-STAR applied during 2025?",
+    "sql": "SELECT resource, plot_name, property_name, quantity, total_cost, start_date\nFROM mv_plot_resource_full\nWHERE resource_type = 'Cultural Practice Phyto' AND resource ILIKE '%AGRO-STAR%' AND id_entity = {entity_id} AND EXTRACT(YEAR FROM start_date) = 2025\nORDER BY start_date DESC NULLS LAST\nLIMIT 50"
+  },
+  {
+    "question": "List days worked by Worker A during 2025 grouped by month",
+    "sql": "SELECT resource, month, year, total_hours, days_worked\nFROM mv_calendar_hr\nWHERE resource ILIKE '%Worker A%' AND id_entity = {entity_id} AND year = 2025\nORDER BY month\nLIMIT 50"
+  },
+  {
+    "question": "List pruning practices with costs and hours grouped by variety",
+    "sql": "SELECT practice_type, variety, plot_name, SUM(n_hours) AS total_hours, SUM(total_cost) AS total_cost\nFROM mv_plot_resource_full\nWHERE practice_type ILIKE '%Pruning%' AND id_entity = {entity_id}\nGROUP BY practice_type, variety, plot_name\nORDER BY total_hours DESC NULLS LAST\nLIMIT 50"
+  }
+]

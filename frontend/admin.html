@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel — AgriSystem AI</title>
+    <link rel="stylesheet" href="index.css" />
+    <link rel="stylesheet" href="admin.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  </head>
+  <body class="admin-body">
+
+    <header class="admin-header">
+      <div class="admin-header-left">
+        <a href="index.html" class="back-btn" aria-label="Voltar ao chatbot">
+          <i class="ph ph-arrow-left"></i>
+        </a>
+        <div class="logo-area">
+          <i class="ph-fill ph-leaf logo-icon"></i>
+          <span class="logo-text">AgriSystem AI</span>
+        </div>
+      </div>
+      <h1 class="admin-title"><i class="ph ph-gear"></i> Painel Admin</h1>
+    </header>
+
+    <main class="admin-main">
+      <section class="admin-card">
+        <div class="card-header">
+          <h2><i class="ph ph-upload-simple"></i> Carregar documento</h2>
+          <p class="card-desc">
+            Adicione ficheiros à base de conhecimento do chatbot. Os chunks são indexados imediatamente, sem reiniciar o servidor.<br/>
+            Formatos aceites: <strong>.md</strong>, <strong>.txt</strong>, <strong>.pdf</strong>
+          </p>
+        </div>
+
+        <label class="upload-area" id="upload-area">
+          <i class="ph ph-upload-simple upload-icon"></i>
+          <span class="upload-main-text" id="upload-label">Clique ou arraste um ficheiro aqui</span>
+          <span class="upload-sub-text">.md · .txt · .pdf</span>
+          <input type="file" id="file-input" accept=".md,.txt,.pdf" hidden />
+        </label>
+
+        <div id="upload-status" class="upload-status" hidden></div>
+
+        <div class="upload-progress" id="upload-progress" hidden>
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+      </section>
+
+      <section class="admin-card">
+        <div class="card-header">
+          <h2><i class="ph ph-files"></i> Documentos indexados</h2>
+          <button class="refresh-btn" id="refresh-btn" aria-label="Atualizar lista">
+            <i class="ph ph-arrows-clockwise"></i>
+            <span>Atualizar</span>
+          </button>
+        </div>
+
+        <div id="docs-container">
+          <table class="docs-table" id="docs-table">
+            <thead>
+              <tr>
+                <th>Ficheiro</th>
+                <th>Tipo</th>
+                <th class="col-size">Tamanho</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="docs-tbody">
+              <tr><td colspan="3" class="docs-state">A carregar...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="docs-footer" id="docs-footer"></div>
+      </section>
+
+    </main>
+
+    <script src="admin.js"></script>
+  </body>
+</html>

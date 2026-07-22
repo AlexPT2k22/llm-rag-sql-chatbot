@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgriSystem AI</title>
+    <link rel="stylesheet" href="index.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </head>
+  <body>
+    <div class="app-container">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo-area">
+            <span class="logo-text">AgriSystem AI</span>
+          </div>
+          <button class="sidebar-collapse" aria-label="Recolher menu">
+            <i class="ph ph-sidebar-simple"></i>
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-title-row">
+            <h3 class="nav-title">Conversas Recentes</h3>
+            <div class="nav-actions">
+              <button aria-label="Nova conversa" id="new-chat-btn">
+                <i class="ph ph-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div id="chat-history-list">
+            <a href="#" class="nav-item active">
+              <span>Nova Sessao</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="entidade-info" id="entidade-info"></div>
+          <a class="admin-btn" href="admin.html" aria-label="Painel Admin">
+            <i class="ph ph-gear"></i>
+            <span>Painel Admin</span>
+          </a>
+          <button class="admin-btn" id="logout-btn" aria-label="Sair">
+            <i class="ph ph-sign-out"></i>
+            <span>Sair</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="chat-container" id="chat-container">
+          <div class="welcome-container" id="welcome-message">
+            <h1>Como posso ajudar?</h1>
+            <p>
+              Faca perguntas sobre os dados dos modulos ou sobre os
+              procedimentos e documentacao funcional.
+            </p>
+          </div>
+        </div>
+
+        <div class="input-container-wrapper">
+          <div class="input-box">
+            <div class="input-row">
+              <textarea
+                id="user-input"
+                placeholder="Faca uma pergunta ao AgriSystem AI..."
+                rows="1"
+              ></textarea>
+              <button
+                id="send-btn"
+                class="send-btn"
+                aria-label="Enviar"
+                disabled
+              >
+                <i class="ph ph-arrow-up"></i>
+              </button>
+            </div>
+
+            <div class="input-footer">
+              O conteudo gerado pela IA pode conter imperfeicoes. Verifique a
+              informacao importante.
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      if (!sessionStorage.getItem("entidade_id")) {
+        window.location.href = "login.html";
+      }
+    </script>
+    <script src="script.js"></script>
+  </body>
+</html>

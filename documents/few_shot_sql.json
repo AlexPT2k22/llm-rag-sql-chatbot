@@ -1,0 +1,52 @@
+[
+  {
+    "question": "What human resources worked on cultural practices and how many hours?",
+    "sql": "SELECT resource, practice_type, SUM(n_hours) AS total_hours, COUNT(*) AS n_practices\nFROM mv_plot_resource_full\nWHERE resource_type = 'Cultural Practice HR' AND id_entity = {entity_id}\nGROUP BY resource, practice_type\nORDER BY total_hours DESC NULLS LAST\nLIMIT 50",
+    "pattern": "HR hours by practice"
+  },
+  {
+    "question": "What equipment was used in practices and how many hours?",
+    "sql": "SELECT resource, practice_type, SUM(n_hours) AS total_hours\nFROM mv_plot_resource_full\nWHERE resource_type = 'Cultural Practice Equipment' AND id_entity = {entity_id}\nGROUP BY resource, practice_type\nORDER BY total_hours DESC NULLS LAST\nLIMIT 50",
+    "pattern": "Equipment hours by practice"
+  },
+  {
+    "question": "What fertilizers were applied to the plots and in what quantities?",
+    "sql": "SELECT resource, plot_name, quantity, total_cost, start_date\nFROM mv_plot_resource_full\nWHERE resource_type = 'Cultural Practice Fertilizer' AND id_entity = {entity_id}\nORDER BY start_date DESC NULLS LAST\nLIMIT 50",
+    "pattern": "Fertilizer plot quantities"
+  },
+  {
+    "question": "What phytosanitary products were applied and where?",
+    "sql": "SELECT resource, practice_type, plot_name, quantity, start_date\nFROM mv_plot_resource_full\nWHERE resource_type = 'Cultural Practice Phyto' AND id_entity = {entity_id} AND EXTRACT(YEAR FROM start_date) = {year}\nORDER BY start_date DESC NULLS LAST\nLIMIT 50",
+    "pattern": "Phytosanitary applied where"
+  },
+  {
+    "question": "Monthly calendar with hours worked by agricultural workers",
+    "sql": "SELECT resource, month, year, total_hours, days_worked\nFROM mv_calendar_hr\nWHERE id_entity = {entity_id} AND year = {year}\nORDER BY year DESC NULLS LAST, month, resource\nLIMIT 50",
+    "pattern": "HR calendar by month"
+  },
+  {
+    "question": "Monthly calendar with equipment usage hours",
+    "sql": "SELECT resource, month, year, total_hours, days_used\nFROM mv_calendar_equipment\nWHERE id_entity = {entity_id} AND year = {year}\nORDER BY year DESC NULLS LAST, month, resource\nLIMIT 50",
+    "pattern": "Equipment calendar by month"
+  },
+  {
+    "question": "What irrigation types exist in plots organized by property?",
+    "sql": "SELECT property_name, plot_name, total_area, irrigation_type\nFROM v_field_base\nWHERE id_entity = {entity_id} AND irrigation_type IS NOT NULL\nORDER BY property_name, plot_name\nLIMIT 50",
+    "pattern": "Irrigation by property and plot"
+  },
+  {
+    "question": "List all operations associated with the DOC Red lot in the cellar",
+    "sql": "SELECT operation_type, lot, tank, registration_date, n_hours, total_cost\nFROM v_cellar_operations\nWHERE lot ILIKE '%DOC Red%' AND id_entity = {entity_id}\nORDER BY registration_date DESC NULLS LAST\nLIMIT 50",
+    "pattern": "Cellar operations by lot"
+  },
+  {
+    "question": "Calculate costs and hours for all cellar lots in {year}",
+    "sql": "SELECT lot, SUM(n_hours) AS total_hours, SUM(total_cost) AS total_cost\nFROM v_cellar_operations\nWHERE id_entity = {entity_id} AND year = {year}\nGROUP BY lot\nORDER BY total_cost DESC NULLS LAST\nLIMIT 50",
+    "pattern": "Cellar costs hours by lot"
+  },
+  {
+    "question": "List wine quantities by wine type in the cellar",
+    "sql": "SELECT wine_type, SUM(total_liters) AS total_liters\nFROM v_cellar_volumes\nWHERE id_entity = {entity_id}\nGROUP BY wine_type\nORDER BY total_liters DESC NULLS LAST\nLIMIT 50",
+    "pattern": "Cellar wine volumes by type"
+  }
+]
