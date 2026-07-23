@@ -4,26 +4,82 @@ A production-grade AI assistant that answers natural language questions about ag
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    User["User Question"] --> Condense["Condense Question\n(resolve pronouns, follow-ups)"]
+    Condense --> Classifier{"Query Classifier\n(keyword-based)"}
+
+    Classifier -->|"RAG"| RAG["RAG Pipeline"]
+    Classifier -->|"SQL"| SQL["SQL Pipeline"]
+    Classifier -->|"BOTH"| BOTH["Merge RAG + SQL"]
+    Classifier -->|"GREETING/CHITCHAT"| CHAT["Static Response"]
+    Classifier -->|"META"| META["Modules Overview"]
+
+    %% RAG Pipeline
+    RAG --> Retriever["Hybrid Retriever\nBM25 + MMR"]
+    Retriever --> ChromaDB[("ChromaDB\n3 Collections")]
+    ChromaDB --> LLM_RAG["Ollama Qwen2.5 7B"]
+    LLM_RAG --> Stream_RAG["SSE Token Stream"]
+
+    %% SQL Pipeline
+    subgraph SQL_PIPELINE["SQL Pipeline (Controlled)"]
+        direction TB
+        SQL_Start["Question"] --> DomainSearch["Domain Search\nBM25 + MMR Hybrid"]
+        DomainSearch --> SchemaPruning{"Schema Pruning\n(max 4 tables)"}
+        SchemaPruning --> ViewInjection["View Injection\n(v_cellar_*, mv_plot_*)"]
+        ViewInjection --> FewShot["Few-shot Retrieval\ncosine similarity"]
+        FewShot --> GenSQL["SQL Generation\nOllama Qwen2.5 7B"]
+        GenSQL --> Validate["Validate & Fix\nsqlglot + column check"]
+        Validate --> Execute["Execute SQL\nPostgreSQL (10s timeout)"]
+        Execute --> Retry{"Error?"}
+        Retry -->|"Yes (1 retry)"| FixLLM["LLM Auto-correct"]
+        FixLLM --> Execute
+        Retry -->|"No"| Format["Format as Markdown"]
+    end
+
+    SQL --> SQL_PIPELINE
+    SQL_PIPELINE --> Stream_SQL["SSE Token Stream"]
+    SQL_PIPELINE -->|"Failed"| Fallback
+
+    %% Fallback
+    subgraph FALLBACK["ReAct Agent (Fallback)"]
+        direction TB
+        Agent["LangGraph Agent"] --> Tool1["search_tables"]
+        Agent --> Tool2["get_table_schema"]
+        Agent --> Tool3["sample_table_data"]
+        Agent --> Tool4["run_sql"]
+        Agent --> Tool5["find_join_path"]
+    end
+
+    Fallback["Fallback Triggered"] --> FALLBACK
+    FALLBACK --> Stream_FB["SSE Token Stream"]
+
+    %% BOTH
+    BOTH --> RAG
+    BOTH --> SQL
+    RAG --> Merge["Merge Responses\n(LLM or Concatenate)"]
+    SQL --> Merge
+    Merge --> Stream_Merge["SSE Token Stream"]
+
+    %% Styling
+    style SQL_PIPELINE fill:#1a1a2e,stroke:#e94560,color:#fff
+    style FALLBACK fill:#1a1a2e,stroke:#e94560,color:#fff
+    style Classifier fill:#16213e,stroke:#0f3460,color:#fff
+    style Retry fill:#16213e,stroke:#0f3460,color:#fff
+    style SchemaPruning fill:#16213e,stroke:#0f3460,color:#fff
 ```
-User Question
-     |
-     v
-Query Classifier (keyword-based)
-     |
-     +----> RAG Pipeline -----> ChromaDB Vectorstore
-     |         |                       |
-     |         v                       v
-     |     Condense Q  -->  BM25 + MMR  -->  Ollama LLM  -->  Answer
-     |
-     +----> SQL Pipeline -----> PostgreSQL (3 DBs)
-     |         |                       |
-     |         v                       v
-     |     Search Tables  -->  Generate SQL  -->  Execute  -->  Format
-     |
-     +----> BOTH (merge RAG + SQL)
-     |
-     +----> GREETING / CHITCHAT / META
-```
+
+### Pipeline Statistics (Live)
+
+The system tracks pipeline performance in real-time:
+
+| Metric | Description |
+|---|---|
+| `pipeline_ok` | Questions answered by controlled pipeline |
+| `pipeline_fail` | Pipeline failures (triggers fallback) |
+| `fallback_ok` | ReAct agent recovered the answer |
+| `fallback_fail` | Both pipeline and fallback failed |
+| `cache_hit` | Repeated questions served from cache (5min TTL) |
 
 ## Key Features
 
@@ -173,6 +229,13 @@ On first run, vector stores are built automatically (requires internet for embed
 
 ## How It Works
 
+### System Scale
+- **3 PostgreSQL databases**: Operations, Plots, Cellar
+- **500+ tables** across all databases
+- **50,000+ rows** of agricultural, operational, and cellar data
+- **50+ pre-joined views** for optimized querying
+- **3 ChromaDB collections**: documents, tables, domains
+
 ### RAG Flow
 1. User question received via SSE endpoint
 2. Question condensed using conversation history (resolves pronouns, follow-ups)
@@ -180,24 +243,25 @@ On first run, vector stores are built automatically (requires internet for embed
 4. If RAG: documents retrieved with BM25+MMR hybrid → Ollama generates answer from context
 5. Response streamed token-by-token via SSE
 
-### SQL Flow
+### SQL Flow (Controlled Pipeline)
 1. Question classified as SQL/BOTH
-2. **Domain search**: vector similarity to find relevant table groups
-3. **Schema retrieval**: schemas of top tables fetched (max 4 + views)
-4. **Few-shot injection**: similar question-SQL pairs appended to context
-5. **SQL generation**: Ollama generates query with schema + examples
-6. **Validation**: `sqlglot` syntax check + column verification against in-memory schemas
-7. **Execution**: query runs on the appropriate database with 10s timeout
-8. **Auto-retry**: on error, LLM corrects the query (1 retry)
-9. **Formatting**: results formatted as user-friendly markdown table
+2. **Domain search**: BM25+MMR hybrid finds relevant table groups (70/30 lexical/semantic)
+3. **Schema pruning**: max 4 regular tables + views injected (prevents LLM context overflow)
+4. **View injection**: domain-specific views prioritized (v_cellar_*, mv_plot_resource_full)
+5. **Few-shot retrieval**: cosine-similarity matches similar question-SQL pairs
+6. **SQL generation**: Ollama generates query with schema + context + examples
+7. **Validation**: sqlglot syntax check + column verification against in-memory schemas
+8. **Execution**: query runs on appropriate database with 10s timeout
+9. **Auto-retry**: on error, LLM corrects the query (1 retry with schema context)
+10. **Formatting**: results formatted as user-friendly markdown table
 
 ### Fallback (ReAct Agent)
-If the controlled pipeline fails, a LangGraph ReAct agent with 5 tools takes over:
-- `search_tables` — semantic table search
-- `get_table_schema` — fetch column definitions
-- `sample_table_data` — preview real column values
-- `run_sql` — execute SELECT queries
-- `find_join_path` — discover FK paths between tables
+If the controlled pipeline fails (schema pruning miss, complex joins, etc.), a LangGraph ReAct agent with 5 tools takes over:
+- `search_tables` — semantic table search across 3 DBs
+- `get_table_schema` — fetch column definitions with FK hints
+- `sample_table_data` — preview real column values (M/F, date formats, etc.)
+- `run_sql` — execute SELECT queries with 10s timeout
+- `find_join_path` — discover FK paths via NetworkX graph traversal
 
 ## Benchmarks
 
@@ -221,12 +285,15 @@ python benchmarks/load_test.py
 ## Design Decisions
 
 - **100% local processing**: No cloud APIs, full data privacy via Ollama
-- **Multi-DB architecture**: Each domain (Monitoring, Operations, Cellar) has its own database
-- **View-first SQL queries**: Pre-joined views reduce LLM errors vs complex JOINs
-- **Schema pruning**: Limiting to 4 tables prevents LLM confusion with large schemas
-- **Hybrid retrieval**: BM25 handles exact terminology while MMR covers semantic similarity
+- **Multi-DB architecture**: Each domain (Operations, Plots, Cellar) has its own database with 500+ tables
 - **Controlled pipeline + ReAct fallback**: Two-tier approach balances reliability and flexibility
-- **Portuguese language**: System designed for Portuguese-speaking users (PT-PT)
+- **Schema pruning**: Limiting to 4 tables prevents LLM confusion with large schemas
+- **View-first SQL queries**: Pre-joined views reduce LLM errors vs complex JOINs
+- **Hybrid retrieval**: BM25 handles exact terminology while MMR covers semantic similarity
+- **FK graph traversal**: NetworkX-based JOIN path discovery between tables without direct foreign keys
+- **Auto-retry with LLM correction**: Schema-aware error fixing on first SQL failure
+- **SQL validation**: sqlglot syntax check + column verification before execution
+- **Result caching**: 5-minute TTL cache for repeated queries reduces load
 
 ## Future Work
 
