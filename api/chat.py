@@ -69,6 +69,11 @@ _NO_INFO_PHRASES = [
     "não encontrei informação",
     "não tenho dados",
     "sem dados",
+    "i don't have enough information",
+    "no records were found",
+    "i couldn't find information",
+    "i don't have data",
+    "no data available",
 ]
 
 def _auto_score(tid, resposta):
@@ -99,10 +104,10 @@ def _compress_history(messages):
     for msg in messages:
         if msg.type == "ai" and "|" in msg.content and "---" in msg.content:
             row_count = len(msg.content.split("\n")) - 2
-            resumo = f"[Forneci os dados pedidos numa tabela com {max(0, row_count)} linhas. Não tenho estes dados em memória. Para novos filtros, SOU OBRIGADO a executar nova query SQL.]"
+            resumo = f"[I provided the requested data in a table with {max(0, row_count)} rows. I don't have this data in memory. For new filters, I MUST execute a new SQL query.]"
             compressed.append(AIMessage(content=resumo))
         elif msg.type == "human":
-            compressed.append(HumanMessage(content="[Pergunta anterior — ver resposta acima]"))
+            compressed.append(HumanMessage(content="[Previous question — see response above]"))
         else:
             compressed.append(msg)
     return compressed
@@ -149,7 +154,7 @@ def _condense_question(pergunta: str, memory: ConversationBufferWindowMemory) ->
     if not history:
         return pergunta
     chat_history_text = "\n".join(
-        f"{'Utilizador' if i % 2 == 0 else 'Assistente'}: {m.content}"
+        f"{'User' if i % 2 == 0 else 'Assistant'}: {m.content}"
         for i, m in enumerate(history)
     )
     prompt = CONDENSE_PROMPT.format(chat_history=chat_history_text, question=pergunta)
@@ -264,22 +269,22 @@ async def chat(message: str = Form(...), session_id: str = Form("default")):
         src_docs = rag_result.get("source_documents", [])
         compressed_history = _compress_history(memory.chat_memory.messages)
         resposta_sql, sql, _ = sql_agent.answer(pergunta, chat_history=compressed_history)
-        merge_prompt = f"""Combina as seguintes duas respostas numa resposta única e coerente em português de Portugal.
-Se uma das respostas disser 'Não tenho essa informação', usa apenas a outra.
+        merge_prompt = f"""Combine the following two answers into a single, coherent response in English.
+If one of the answers says 'I don't have that information', use only the other.
 
-Resposta da documentação:
+Documentation answer:
 {resposta_rag}
 
-Dados da base de dados:
+Database data:
 {resposta_sql}
 
-Pergunta original: {pergunta}
+Original question: {pergunta}
 
-Resposta combinada:"""
+Combined answer:"""
         try:
             resposta = llm.invoke(merge_prompt, config={"callbacks": callbacks})
         except Exception:
-            resposta = f"{resposta_rag}\n\nDados da base de dados:\n{resposta_sql}"
+            resposta = f"{resposta_rag}\n\nDatabase data:\n{resposta_sql}"
         memory.chat_memory.add_user_message(pergunta)
         memory.chat_memory.add_ai_message(resposta)
         tid = _trace_id(lf_handler)
@@ -362,18 +367,18 @@ async def chat_stream(message: str = Query(...), session_id: str = Query("defaul
             prompt_text, num_docs = await asyncio.to_thread(_retrieve_and_build_prompt, pergunta_standalone)
             resposta_rag = await asyncio.to_thread(llm.invoke, prompt_text, config={"callbacks": callbacks})
             
-            merge_prompt = f"""Combina as seguintes duas respostas numa resposta única e coerente em português de Portugal.
-Se uma das respostas disser 'Não tenho essa informação', usa apenas a outra.
+            merge_prompt = f"""Combine the following two answers into a single, coherent response in English.
+If one of the answers says 'I don't have that information', use only the other.
 
-Resposta da documentação:
+Documentation answer:
 {resposta_rag}
 
-Dados da base de dados:
+Database data:
 {resposta_sql}
 
-Pergunta original: {pergunta_standalone}
+Original question: {pergunta_standalone}
 
-Resposta combinada:"""
+Combined answer:"""
             
             full_response = ""
             for chunk in llm.stream(merge_prompt, config={"callbacks": callbacks}):
@@ -497,13 +502,13 @@ def _rebuild_retriever():
 async def admin_upload(file: UploadFile = File(...)):
     safe_name = os.path.basename(file.filename or "")
     if not safe_name or "/" in safe_name or "\\" in safe_name or safe_name.startswith("."):
-        raise HTTPException(status_code=400, detail="Nome de ficheiro inválido.")
+        raise HTTPException(status_code=400, detail="Invalid filename.")
     ext = os.path.splitext(safe_name)[1].lower()
     if ext not in [".md", ".txt", ".pdf"]:
-        raise HTTPException(status_code=400, detail="Formato não suportado. Use .md, .txt ou .pdf.")
+        raise HTTPException(status_code=400, detail="Unsupported format. Use .md, .txt or .pdf.")
     dest = os.path.join(DOCS_DIR, safe_name)
     if not os.path.abspath(dest).startswith(os.path.abspath(DOCS_DIR)):
-        raise HTTPException(status_code=400, detail="Acesso negado.")
+        raise HTTPException(status_code=400, detail="Access denied.")
     content = await file.read()
     with open(dest, "wb") as f:
         f.write(content)
@@ -547,12 +552,12 @@ async def admin_debug_search(q: str = Query(...), filename: str = Query(None)):
 @router.delete("/admin/documents/{filename}")
 async def admin_delete(filename: str):
     if "/" in filename or "\\" in filename or filename.startswith("."):
-        raise HTTPException(status_code=400, detail="Nome de ficheiro inválido.")
+        raise HTTPException(status_code=400, detail="Invalid filename.")
     filepath = os.path.join(DOCS_DIR, filename)
     if not os.path.abspath(filepath).startswith(os.path.abspath(DOCS_DIR)):
-        raise HTTPException(status_code=400, detail="Acesso negado.")
+        raise HTTPException(status_code=400, detail="Access denied.")
     if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="Ficheiro não encontrado.")
+        raise HTTPException(status_code=404, detail="File not found.")
     chunks_removed = 0
     try:
         results = vectorstore._collection.get(where={"filename": filename})

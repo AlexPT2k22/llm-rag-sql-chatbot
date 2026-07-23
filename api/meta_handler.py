@@ -7,7 +7,7 @@ _TITLE_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
 @lru_cache(maxsize=1)
 def get_modules_overview() -> str:
     if not os.path.isdir(DOCS_DIR):
-        return "Nao tenho modulos indexados."
+        return "I don't have any modules indexed."
     EXCLUDE = {"system_notes.md"}
     seen: set[str] = set()
     modulos: list[str] = []
@@ -32,13 +32,13 @@ def get_modules_overview() -> str:
         seen.add(key)
         modulos.append(nome)
     if not modulos:
-        return "Nao tenho modulos indexados."
+        return "I don't have any modules indexed."
     linhas = [f"- **{nome}**" for nome in modulos]
     return (
-        "Sou o assistente de suporte ao AgriSystem. Posso ajudar-te com "
-        "os seguintes modulos:\n\n"
+        "I am the AgriSystem support assistant. I can help you with "
+        "the following modules:\n\n"
         + "\n".join(linhas)
-        + "\n\nPergunta-me como executar uma tarefa especifica (ex.: "
-        '"Como adiciono uma parcela?") ou pede dados das bases de dados '
-        "(Field Operations, Plot Management e Cellar Management)."
+        + "\n\nAsk me how to perform a specific task (e.g., "
+        '"How do I add a plot?") or request data from the databases '
+        "(Field Operations, Plot Management and Cellar Management)."
     )

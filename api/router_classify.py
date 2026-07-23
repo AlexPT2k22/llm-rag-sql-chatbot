@@ -122,8 +122,8 @@ CHITCHAT = {
 
 }
 
-GREETING_RESPONSE = "Ola! Sou o assistente de suporte ao AgriSystem. Como posso ajudar?"
-CHITCHAT_RESPONSE = "Entendido! Se tiver mais alguma questao sobre o AgriSystem, estou aqui para ajudar."
+GREETING_RESPONSE = "Hello! I am the AgriSystem support assistant. How can I help you?"
+CHITCHAT_RESPONSE = "Understood! If you have any other questions about AgriSystem, I'm here to help."
 
 def normalize(text: str) -> str:
     t = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII").lower()

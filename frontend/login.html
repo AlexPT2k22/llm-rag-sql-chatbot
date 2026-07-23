@@ -11,6 +11,7 @@
       rel="stylesheet"
     />
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="config.js"></script>
     <style>
       .login-wrapper {
         display: flex;
@@ -130,13 +131,13 @@
       const anoSelect = document.getElementById("ano-select");
       const loginBtn = document.getElementById("login-btn");
       const errorEl = document.getElementById("login-error");
-      const API_BASE = "http://127.0.0.1:8000";
+      const API_BASE_URL = typeof API_BASE !== "undefined" ? API_BASE : "http://127.0.0.1:8000";
 
       if (sessionStorage.getItem("entidade_id")) {
         window.location.href = "index.html";
       }
 
-      fetch(`${API_BASE}/api/entidades`)
+      fetch(`${API_BASE_URL}/api/entidades`)
         .then((r) => r.json())
         .then((data) => {
           select.innerHTML = '<option value="">Selecione...</option>';
@@ -164,7 +165,7 @@
           anoSelect.innerHTML = '<option value="">Selecione a entidade primeiro</option>';
           return;
         }
-        fetch(`${API_BASE}/api/anos-agricolas?entidade_id=${select.value}`)
+        fetch(`${API_BASE_URL}/api/anos-agricolas?entidade_id=${select.value}`)
           .then((r) => r.json())
           .then((data) => {
             if (data.anos.length === 0) {

@@ -111,7 +111,8 @@
   width: 100%;
 }
 .upload-area:hover,
-.upload-area.drag-over {
+.upload-area.drag-over,
+.upload-area--active {
   border-color: var(--primary-color);
   background-color: #f0f9fb;
 }
@@ -229,6 +230,11 @@
   align-items: center;
   gap: 8px;
 }
+.docs-icon {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-right: 2px;
+}
 .doc-icon {
   font-size: 16px;
   color: var(--text-secondary);
@@ -238,6 +244,11 @@
   color: var(--text-secondary);
   font-size: 0.8rem;
   width: 64px;
+}
+.col-type {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  width: 80px;
 }
 .col-size {
   color: var(--text-secondary);

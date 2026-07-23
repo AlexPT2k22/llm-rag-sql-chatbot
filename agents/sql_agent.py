@@ -48,7 +48,7 @@ DOMAIN_GROUPS = {
     },
     "operations_geo": {
         "db": "Operations",
-        "desc": "Dados geográficos e administrativos: distritos, concelhos, freguesias, perfil solo geológico, ano agrícola, entidades, riscos",
+        "desc": "Geographic and administrative data: districts, municipalities, parishes, geological soil profile, agricultural year, entities, risks",
         "prefixes": ["distrito", "concelho", "freguesia", "perfil_solo", "ano_agricola", "entidade", "risco", "fase_parcelar", "outro_detentor"],
     },
     "plots_operations": {
@@ -374,22 +374,22 @@ class SQLAgentTools:
             tables = unique_tables[:MAX_TABLES]
             formatted = [f"[{db}] {t}" for db, t in tables]
             dbs_used = sorted(set(db for db, _ in tables))
-            output = f"BDs envolvidas: {', '.join(dbs_used)}\nTabelas encontradas:\n" + "\n".join(formatted)
+            output = f"Databases used: {', '.join(dbs_used)}\nTables found:\n" + "\n".join(formatted)
             return output
         @tool
         def get_table_schema(db_name: str, table_name: str) -> str:
-            """Obtém o schema completo de uma tabela (colunas, tipos, chaves estrangeiras).
-            Usa ANTES de escrever SQL para verificar que colunas existem.
-            IMPORTANTE: passa sempre o db_name (ex: 'Operations') e o table_name (ex: 'parcela')."""
+            """Gets the full schema of a table (columns, types, foreign keys).
+            Use BEFORE writing SQL to verify which columns exist.
+            IMPORTANT: always pass db_name (e.g., 'Operations') and table_name (e.g., 'parcela')."""
             schema = agent_ref.table_schemas.get((db_name, table_name))
             if schema:
                 desc_entry = TABLE_DESCRIPTIONS.get(db_name, {}).get(table_name)
                 if desc_entry and desc_entry.get("descricao"):
-                    schema = f"DESCRIÇÃO: {desc_entry['descricao']}\n\n{schema}"
+                    schema = f"DESCRIPTION: {desc_entry['descricao']}\n\n{schema}"
                 fks = agent_ref.table_fks.get((db_name, table_name), [])
                 if len(fks) >= 2:
                     joins = [f"JOIN {ref_t} ON {ref_t}.{ref_col} = {table_name}.{col}" for col, ref_t, ref_col in fks]
-                    schema += f"\n\nESTA É UMA TABELA DE ASSOCIAÇÃO. Padrão de JOIN típico:\n  SELECT ... FROM {table_name}\n  " + "\n  ".join(joins)
+                    schema += f"\n\nTHIS IS A JUNCTION TABLE. Typical JOIN pattern:\n  SELECT ... FROM {table_name}\n  " + "\n  ".join(joins)
                 return schema
             matches = [(db, t) for (db, t) in agent_ref.table_schemas if t == table_name]
             if matches:
@@ -397,20 +397,20 @@ class SQLAgentTools:
                 results = []
                 for db, t in matches:
                     results.append(f"--- {db}.{t} ---\n{agent_ref.table_schemas[(db, t)]}")
-                header = f"AVISO: Tabela '{table_name}' NÃO existe em '{db_name}'. Encontrada em: {', '.join(other_dbs)}.\nUsa db_name='{other_dbs[0]}' nas próximas queries.\n\n"
+                header = f"WARNING: Table '{table_name}' does NOT exist in '{db_name}'. Found in: {', '.join(other_dbs)}.\nUse db_name='{other_dbs[0]}' in the next queries.\n\n"
                 return header + "\n\n".join(results)
-            return f"Tabela '{table_name}' não encontrada. Usa search_tables para encontrar tabelas disponíveis."
+            return f"Table '{table_name}' not found. Use search_tables to find available tables."
         @tool
         def run_sql(db_name: str, query: str) -> str:
             """Executa uma query SQL SELECT read-only na base de dados PostgreSQL especificada.
-            Apenas SELECT é permitido. Retorna as colunas e linhas do resultado.
-            IMPORTANTE: especifica sempre o db_name (ex: 'Operations' ou 'Plots')."""
+            Only SELECT is allowed. Returns the columns and rows of the result.
+            IMPORTANT: always specify the db_name (e.g., 'Operations' or 'Plots')."""
             sql_upper = query.strip().upper()
             if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
-                return "ERRO: Apenas queries SELECT são permitidas."
+                return "ERROR: Only SELECT queries are allowed."
             if db_name not in agent_ref.db_urls:
                 available = ', '.join(agent_ref.db_urls.keys())
-                return f"ERRO: BD '{db_name}' não encontrada. BDs disponíveis: {available}"
+                return f"ERROR: Database '{db_name}' not found. Available databases: {available}"
             def _exec(db, sql):
                 url = agent_ref.db_urls[db]
                 conn = psycopg2.connect(url, options="-c statement_timeout=10000")
@@ -444,7 +444,7 @@ class SQLAgentTools:
                                 except Exception:
                                     pass
                 if not rows:
-                    return f"[{db_name}] Colunas: {columns}\nResultado: 0 linhas (sem dados)"
+                    return f"[{db_name}] Columns: {columns}\nResult: 0 rows (no data)"
                 max_display = 50
                 display_rows = rows[:max_display]
                 header = "| " + " | ".join([str(c).replace("_", " ").title() for c in columns]) + " |"
@@ -456,29 +456,29 @@ class SQLAgentTools:
                 
                 md_table = "\n".join([header, separator] + table_rows)
                 
-                text = f"**Resultados encontrados ({len(rows)} registos):**\n\n{md_table}"
+                text = f"**Results found ({len(rows)} records):**\n\n{md_table}"
                 
                 if len(rows) > max_display:
-                    text += f"\n\n*A mostrar apenas os primeiros {max_display} registos.*"
+                    text += f"\n\n*Showing only the first {max_display} records.*"
                 
                 return text
             except Exception as e:
                 return (
-                    f"ERRO SQL [{db_name}]: {e}\n\n"
-                    f"DICA DO SISTEMA: Pára de adivinhar nomes de colunas! "
-                    f"És OBRIGADO a usar a ferramenta 'get_table_schema' ou 'sample_table_data' "
-                    f"para verificar a estrutura exata da tabela antes de tentares o run_sql novamente."
+                    f"SQL ERROR [{db_name}]: {e}\n\n"
+                    f"SYSTEM HINT: Stop guessing column names! "
+                    f"You MUST use the 'get_table_schema' or 'sample_table_data' tool "
+                    f"to check the exact table structure before trying run_sql again."
                 )
         @tool
         def sample_table_data(db_name: str, table_name: str) -> str:
-            """Obtém 3 linhas de exemplo de uma tabela para perceber os valores reais das colunas
-            (ex: se uma coluna usa 'M/F' ou 'Masculino/Feminino', se tem NULLs, formatos de data, etc.).
-            Usa quando não tens a certeza sobre os valores possíveis de uma coluna antes de escrever o WHERE."""
+            """Gets 3 sample rows from a table to understand real column values
+            (e.g., whether a column uses 'M/F' or 'Male/Female', has NULLs, date formats, etc.).
+            Use when you're unsure about possible values of a column before writing the WHERE clause."""
             if db_name not in agent_ref.db_urls:
                 available = ', '.join(agent_ref.db_urls.keys())
-                return f"ERRO: BD '{db_name}' não encontrada. BDs disponíveis: {available}"
+                return f"ERROR: Database '{db_name}' not found. Available databases: {available}"
             if (db_name, table_name) not in agent_ref.table_schemas:
-                return f"Tabela '{table_name}' não encontrada em '{db_name}'. Usa search_tables primeiro."
+                return f"Table '{table_name}' not found in '{db_name}'. Use search_tables first."
             url = agent_ref.db_urls[db_name]
             try:
                 conn = psycopg2.connect(url, options="-c statement_timeout=5000")
@@ -490,36 +490,36 @@ class SQLAgentTools:
                 cur.close()
                 conn.close()
                 if not rows:
-                    return f"Tabela '{table_name}' está vazia."
+                    return f"Table '{table_name}' is empty."
                 results = [sanitize(str(dict(zip(columns, row)))) for row in rows]
-                return f"[{db_name}.{table_name}] Exemplo de dados ({len(rows)} linhas):\n" + "\n".join(results)
+                return f"[{db_name}.{table_name}] Sample data ({len(rows)} rows):\n" + "\n".join(results)
             except Exception as e:
-                return f"ERRO ao obter dados de '{table_name}': {e}"
+                return f"ERROR getting data from '{table_name}': {e}"
         @tool
         def find_join_path(db_name: str, from_table: str, to_table: str) -> str:
-            """Encontra o caminho de JOINs entre duas tabelas usando o grafo de Foreign Keys.
-            Usa quando precisas de ligar duas tabelas que não têm FK directa (ex: colheita → tipo_cultura).
-            Retorna os JOINs SQL prontos a usar."""
+            """Finds the JOIN path between two tables using the Foreign Key graph.
+            Use when you need to link two tables that don't have a direct FK (e.g., colheita → tipo_cultura).
+            Returns ready-to-use SQL JOINs."""
             G = agent_ref.fk_graphs.get(db_name)
             if G is None:
-                return f"ERRO: BD '{db_name}' não encontrada."
+                return f"ERROR: Database '{db_name}' not found."
             if from_table not in G:
-                return f"ERRO: Tabela '{from_table}' não existe em '{db_name}'."
+                return f"ERROR: Table '{from_table}' does not exist in '{db_name}'."
             if to_table not in G:
-                return f"ERRO: Tabela '{to_table}' não existe em '{db_name}'."
+                return f"ERROR: Table '{to_table}' does not exist in '{db_name}'."
             try:
                 path = nx.shortest_path(G, from_table, to_table)
             except nx.NetworkXNoPath:
-                return f"Não existe caminho de FK entre '{from_table}' e '{to_table}' em '{db_name}'."
+                return f"No FK path exists between '{from_table}' and '{to_table}' in '{db_name}'."
             if len(path) == 1:
-                return f"'{from_table}' e '{to_table}' são a mesma tabela."
+                return f"'{from_table}' and '{to_table}' are the same table."
             joins = []
             for i in range(len(path) - 1):
                 src, dst = path[i], path[i + 1]
                 edge = G.edges[src, dst]
                 joins.append(f"JOIN {dst} ON {dst}.{edge['ref_col']} = {src}.{edge['col']}")
             return (
-                f"Caminho: {' -> '.join(path)}\n"
+                f"Path: {' -> '.join(path)}\n"
                 f"SQL JOINs:\n" + "\n".join(joins)
             )
         tools_list = [search_tables, get_table_schema, sample_table_data, run_sql, find_join_path]
@@ -534,29 +534,29 @@ class SQLAgentTools:
             num_predict=2048,
         )
         db_names = ', '.join(self.db_urls.keys())
-        _FALLBACK_PROMPT = f"""Agente SQL PostgreSQL. Responde em PT-PT (formas europeias). BDs: {db_names}.
+        _FALLBACK_PROMPT = f"""PostgreSQL SQL Agent. Respond in English. Databases: {db_names}.
 
-PROCESSO:
-1. Se a tabela está em TABELAS CHAVE → vai direto a run_sql (já sabes a BD).
-2. Se tens schema de mensagens anteriores → usa-o, não repitas get_table_schema.
-3. Caso contrário: search_tables → get_table_schema → run_sql.
-4. Em caso de dúvida sobre valores reais duma coluna, usa sample_table_data antes do WHERE.
-5. Antes de JOIN entre duas tabelas, confirma FK no schema. Sem FK directa → find_join_path.
-6. Se 0 linhas → verifica JOINs com find_join_path e tenta de novo. Se continuar 0 → "Não foram encontrados registos".
+PROCESS:
+1. If the table is in KEY TABLES → go straight to run_sql (you already know the DB).
+2. If you have schema from previous messages → use it, don't repeat get_table_schema.
+3. Otherwise: search_tables → get_table_schema → run_sql.
+4. If unsure about real values in a column, use sample_table_data before the WHERE.
+5. Before joining two tables, confirm FK in the schema. No direct FK → find_join_path.
+6. If 0 rows → check JOINs with find_join_path and try again. If still 0 → "No records found".
 
-REGRAS DE TOOL:
-- AMNÉSIA DE DADOS: Ignora completamente os dados (tabelas, números) gerados por ti em mensagens anteriores. Para responder a qualquer nova pergunta ou filtro (ex: 'e em 2024?'), tens OBRIGATORIAMENTE de gerar uma nova tool_call run_sql. O histórico serve apenas para entender o contexto, não como fonte de dados.
-- Emite APENAS tool_calls — nunca escrevas texto antes de teres dados. O sistema ignora intenções textuais.
-- Após run_sql com resultado válido → escreve a resposta final e PÁRA (sem mais tools).
-- NUNCA respondas com dados sem run_sql. NUNCA inventes valores.
-- Em follow-ups ("e em 2024?", "e por distrito?") DEVES executar nova run_sql. NUNCA reutilizes números de respostas anteriores nem inventes variações.
-- Se run_sql devolver ERRO → corrige a query (verifica schema) e tenta de novo. NUNCA respondas com dados após um erro.
+TOOL RULES:
+- DATA AMNESIA: Completely ignore data (tables, numbers) you generated in previous messages. To answer any new question or filter (e.g., 'and in 2024?'), you MUST generate a new run_sql tool_call. History is only for understanding context, not as a data source.
+- Emit ONLY tool_calls — never write text before you have data. The system ignores text intentions.
+- After run_sql with valid result → write the final answer and STOP (no more tools).
+- NEVER answer with data without run_sql. NEVER make up values.
+- In follow-ups ("and in 2024?", "and by district?") you MUST execute a new run_sql. NEVER reuse numbers from previous answers or invent variations.
+- If run_sql returns ERROR → fix the query (check schema) and try again. NEVER answer with data after an error.
 
-RESPOSTA FINAL:
-- É ESTRITAMENTE PROIBIDO mostrar o código SQL, expor o nome das tabelas, ou mencionar erros de query na resposta final. O utilizador final só quer ler a informação de negócio.
-- Se o contexto injetar um ID interno (ex: "ano": 42), isso refere-se ao `id_ano_agricola`. NUNCA o confundas com o ano de calendário! Para filtrar pelo calendário (ex: 2025), usa apenas `EXTRACT(YEAR) = 2025` e NUNCA `EXTRACT(YEAR) = 42`.
-- Linguagem simples para agricultores. Sem termos técnicos (tabelas, SQL, queries, BD).
-- ≥3 colunas → OBRIGATÓRIO usar tabela markdown (| Nome | Área | ... |). 1-2 colunas → bullet points.
+FINAL ANSWER:
+- It is STRICTLY FORBIDDEN to show SQL code, expose table names, or mention query errors in the final answer. The end user only wants to read business information.
+- If the context injects an internal ID (e.g., "year": 42), that refers to `id_ano_agricola`. NEVER confuse it with the calendar year! To filter by calendar (e.g., 2025), use only `EXTRACT(YEAR) = 2025` and NEVER `EXTRACT(YEAR) = 42`.
+- Simple language for farmers. No technical terms (tables, SQL, queries, DB).
+- ≥3 columns → MANDATORY to use markdown table (| Name | Area | ... |). 1-2 columns → bullet points.
 - Cabeçalhos legíveis: "Nome" (não "denominacao"), "Área (ha)" (não "area_total").
 - Omite campos internos (gid, usercreate, userupdate, createdon, updatedon, estado).
 - Números sem separadores de milhar (372265, não 372.265).
@@ -567,7 +567,7 @@ RESPOSTA FINAL:
 |------|-----------|--------------|
 | ... | ... | ... |
 
-REGRAS SQL:
+        SQL RULES:
 - Tabelas em SINGULAR: recurso, compra, pratica_cultural (nunca pluralizar).
 - Especifica SEMPRE a BD — tabelas com nomes iguais existem em BDs diferentes.
 - O campo para nomes é SEMPRE "denominacao" — NUNCA uses "nome" (não existe).
@@ -644,7 +644,7 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
             except Exception:
                 pass
         if new_version != self._current_prompt_version:
-            print(f"  [SQL Agent] Prompt atualizado: {self._current_prompt_version} -> {new_version}")
+            print(f"  [SQL Agent] Prompt updated: {self._current_prompt_version} -> {new_version}")
             self._current_prompt_version = new_version
             self.agent = create_agent(
                 model=self._llm,
@@ -722,21 +722,21 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
     }
 
     def _is_cellar_question(self, question: str) -> bool:
-        """Detecta perguntas sobre o modulo Cellar."""
+        """Detects questions about the Cellar module."""
         q = question.lower()
         return any(kw in q for kw in self._CELLAR_KEYWORDS)
 
     def _is_p2_question(self, question: str) -> bool:
-        """Detecta perguntas sobre práticas culturais agrícolas.
-        Não activa para perguntas do Cellar (dominio diferente)."""
+        """Detects questions about agricultural practices.
+        Does not activate for Cellar questions (different domain)."""
         if self._is_cellar_question(question):
             return False
         q = question.lower()
         return any(kw in q for kw in self._P2_KEYWORDS)
 
     def _get_few_shot_examples(self, question: str, k: int = 2) -> str:
-        """Recupera os k exemplos few-shot mais similares à pergunta.
-        Para perguntas Adega, filtra apenas exemplos com 'Cellar' no pattern ou SQL."""
+        """Retrieves the k most similar few-shot examples to the question.
+        For Cellar questions, filters only examples with 'Cellar' in pattern or SQL."""
         if not self._few_shot_vectors or not _FEW_SHOT_EXAMPLES:
             return ""
         import numpy as np
@@ -758,7 +758,7 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
         lines = []
         for _, idx in top:
             ex = _FEW_SHOT_EXAMPLES[idx]
-            lines.append(f"Pergunta similar: {ex['question']}\nSQL correcto:\n{ex['sql']}")
+            lines.append(f"Similar question: {ex['question']}\nCorrect SQL:\n{ex['sql']}")
         return "\n\n".join(lines)
 
     # Schema Pruning
@@ -781,7 +781,7 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
                 table_name = line.split("]")[1].strip()
                 key = (db_name, table_name)
                 is_view = table_name.startswith(("v_", "view_", "mv_"))
-                #limitar tabelas regulares, views passam sempre
+                #limit regular tables, views always pass
                 if not is_view and regular_tables_added >= self.MAX_TABLE_SCHEMAS:
                     continue
                 if key not in seen:
@@ -792,9 +792,9 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
                     if not is_view:
                         regular_tables_added += 1
 
-        # forçar mv_plot_resource_full no topo
+        # force mv_plot_resource_full to the top
         if self._is_p2_question(question):
-            # Preferir materialized view (mais rápida) se existir
+            # Prefer materialized view (faster) if it exists
             for view_name in ("mv_plot_resource_full", "v_plot_resource_full"):
                 key = ("Plots", view_name)
                 if key not in seen:
@@ -805,10 +805,10 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
                         tables_found.insert(0, key)
                         break
 
-        # View-first para Cellar
+        # View-first for Cellar
         if self._is_cellar_question(question):
             q_lower = question.lower()
-            # Determinar view principal pelo contexto
+            # Determine main view by context
             if any(kw in q_lower for kw in ("perda", "perdas")):
                 cellar_primary = "v_cellar_losses"
             elif any(kw in q_lower for kw in ("quantidade de vinho", "litros", "fase de vinif", "tipo de armazenamento", "cubas barricas", "armazenamento")):
@@ -826,7 +826,7 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
                     schemas.insert(0, f"[Adega.{cellar_primary}]\n{schema}")
                     tables_found.insert(0, key)
 
-            # Para consumíveis, injectar v_cellar_consumables
+            # For consumables, inject v_cellar_consumables
             if any(kw in q_lower for kw in ("consumiv", "garrafa", "produto enológico", "enologico", "anidrido")):
                 key = ("Cellar", "v_cellar_consumables")
                 if key not in seen:
@@ -836,7 +836,7 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
                         schemas.insert(0, f"[Adega.v_cellar_consumables]\n{schema}")
                         tables_found.insert(0, key)
 
-        # Injectar views para perguntas Cellar, nao injectar views de outras BDs para evitar conflito
+        # Inject views for Cellar questions, do not inject views from other DBs to avoid conflict
         is_adega = self._is_cellar_question(question)
         views_injected = 0
         for doc in self._hybrid_table_search(question, k=10):
@@ -857,46 +857,46 @@ Exemplo volume tinto: SELECT SUM(lc.litragem_est) FROM lote_composicao lc JOIN l
 
         if not schemas:
             return "", []
-        text = "SCHEMAS PRÉ-CARREGADOS (usa APENAS estas colunas, NÃO adivinhes):\n\n" + "\n\n".join(schemas)
+        text = "PRE-LOADED SCHEMAS (use ONLY these columns, do NOT guess):\n\n" + "\n\n".join(schemas)
         return text, tables_found
 
     # Pipeline
 
-    _PIPELINE_SQL_PROMPT = """Gera UMA query SQL PostgreSQL para responder à pergunta do utilizador.
-Usa APENAS as colunas listadas nos schemas abaixo. NÃO inventes colunas.
-Responde APENAS com a query SQL, sem explicações, sem markdown, sem ```sql```.
+    _PIPELINE_SQL_PROMPT = """Generate ONE PostgreSQL SQL query to answer the user's question.
+Use ONLY the columns listed in the schemas below. Do NOT invent columns.
+Respond ONLY with the SQL query, no explanations, no markdown, no ```sql```.
 
 {schemas}
 
 {context}
 
-Pergunta: {question}
+Question: {question}
 
-REGRAS:
-- Estado: WHERE estado = 'A' para registos activos. Views (v_* ou view_*) NÃO têm coluna estado — omite este filtro.
-- Datas: Se o contexto tiver "ano": 42, isso refere-se à coluna `id_ano_agricola = 42`. Se o utilizador pedir pelo ano do calendário (ex: "2025"), podes usar `EXTRACT(YEAR FROM data_inicio) = 2025`. NUNCA FAÇAS `EXTRACT(YEAR) = 42`, pois o ano 42 não existe no calendário.
-- Views Cellar (v_cellar_*): a coluna `ano` é um ANO DE CALENDÁRIO (2025, 2024, ...). Para filtrar por 2025 usa `WHERE ano = 2025`. NUNCA substituas `ano` por `id_ano_agricola` — são valores completamente diferentes.
-- Cuba em v_cellar_operations: para filtrar por cuba usa directamente `WHERE cuba ILIKE '%nome%'`. NÃO precisas de JOIN adicional.
-- Lote em v_cellar_operations: para filtrar por lote usa `WHERE lote ILIKE '%nome_lote%'`. NÃO precisas de JOIN à tabela lote.
-- Ordenações: ORDER BY ... DESC NULLS LAST.
-- JOINS EM VIEWS: Se usares uma view (v_* ou view_*), NÃO faças JOIN a tabelas tipo_* para resolver nomes — as colunas de texto já estão resolvidas na view. Podes fazer JOIN a outras views ou tabelas apenas quando precisas de dados que a view não tem (ex: JOIN v_field_base com parcela_tpenxerto para porta-enxertos). Usa SEMPRE as colunas da view directamente com WHERE coluna ILIKE '%valor%' ou WHERE coluna IS NOT NULL.
-- NOMES DOS RECURSOS: Se o utilizador perguntar por "fitofármaco", "adubo", "produto" ou "equipamento", NUNCA tentes ir buscar tabelas com esses nomes. Usa ÚNICA E EXCLUSIVAMENTE a coluna 'denominacao' da view v_plot_resource_full.
-- Texto: ILIKE '%valor%'.
-- Recursos aplicados (adubos, fitofármacos): inclui SEMPRE as colunas `quantidade` e `custo_total` no SELECT — o utilizador precisa saber quanto foi aplicado e quanto custou.
-- Calendários de RH: usa `mv_calendar_hr` (colunas: recurso, mes, ano, total_horas, dias_trabalhados).
-- Calendários de Equipamentos: usa `mv_calendar_equipment` (colunas: recurso, mes, ano, total_horas, dias_uso).
-- mv_plot_resource_full: horas é `n_hora` (NÃO `total_horas`), custo é `custo_total` (NÃO `total_custo`). Usa SEMPRE `SUM(n_hora)` e `SUM(custo_total)` nesta view. NUNCA uses `total_horas` nem `total_custo` como nomes de coluna nesta tabela.
-- LIMIT 50 por defeito. Se o utilizador pedir "todas" ou "tudo", sem LIMIT.
-- O campo de nomes é "denominacao", EXCETO nas Views, onde deves usar ESTRITAMENTE o nome das colunas listadas no schema (ex: "recurso", "cultura", "propriedade").
-- JOIN com tabelas tipo_* para mostrar denominacao em vez de IDs — MAS só em tabelas normais.
-- VIEWS (nomes começando com v_ ou view_): as colunas de texto já contêm os nomes resolvidos. NÃO faças JOIN a outras tabelas nem a outras BDs — usa directamente WHERE coluna ILIKE '%valor%'. Usa APENAS as colunas listadas no schema da view. Se uma view responde à pergunta, usa SÓ essa view e a sua BD — ignora as outras tabelas dos schemas.
-- Sem backticks, sem prefixos de BD.
-- Especifica a BD no formato de comentário na primeira linha: -- BD: NomeDaBD
+RULES:
+- Status: WHERE estado = 'A' for active records. Views (v_* or view_*) do NOT have a status column — omit this filter.
+- Dates: If the context has "ano": 42, that refers to column `id_ano_agricola = 42`. If the user asks for the calendar year (e.g., "2025"), use `EXTRACT(YEAR FROM data_inicio) = 2025`. NEVER use `EXTRACT(YEAR) = 42`, since year 42 doesn't exist in the calendar.
+- Cellar Views (v_cellar_*): the `ano` column is a CALENDAR YEAR (2025, 2024, ...). To filter for 2025 use `WHERE ano = 2025`. NEVER replace `ano` with `id_ano_agricola` — they are completely different values.
+- Tank in v_cellar_operations: to filter by tank use directly `WHERE cuba ILIKE '%name%'`. No additional JOIN needed.
+- Batch in v_cellar_operations: to filter by batch use `WHERE lote ILIKE '%batch_name%'`. No JOIN to the batch table needed.
+- Sorting: ORDER BY ... DESC NULLS LAST.
+- JOINS IN VIEWS: If using a view (v_* or view_*), do NOT JOIN tipo_* tables to resolve names — text columns are already resolved in the view. You can JOIN other views or tables only when you need data the view doesn't have (e.g., JOIN v_field_base with parcela_tpenxerto for rootstocks). Always use view columns directly with WHERE column ILIKE '%value%' or WHERE column IS NOT NULL.
+- RESOURCE NAMES: If the user asks about "pesticide", "fertilizer", "product" or "equipment", NEVER try to find tables with those names. Use ONLY the 'denominacao' column from v_plot_resource_full.
+- Text: ILIKE '%value%'.
+- Applied resources (fertilizers, pesticides): ALWAYS include `quantidade` and `custo_total` columns in the SELECT — the user needs to know how much was applied and how much it cost.
+- HR calendars: use `mv_calendar_hr` (columns: recurso, mes, ano, total_horas, dias_trabalhados).
+- Equipment calendars: use `mv_calendar_equipment` (columns: recurso, mes, ano, total_horas, dias_uso).
+- mv_plot_resource_full: hours is `n_hora` (NOT `total_horas`), cost is `custo_total` (NOT `total_custo`). Always use `SUM(n_hora)` and `SUM(custo_total)` in this view. NEVER use `total_horas` or `total_custo` as column names in this table.
+- LIMIT 50 by default. If the user asks for "all" or "everything", omit LIMIT.
+- The name field is "denominacao", EXCEPT in Views where you must use STRICTLY the column names listed in the schema (e.g., "recurso", "cultura", "propriedade").
+- JOIN with tipo_* tables to show denominacao instead of IDs — but only in normal tables.
+- VIEWS (names starting with v_ or view_): text columns already contain resolved names. Do NOT JOIN other tables or other databases — use directly WHERE column ILIKE '%value%'. Use ONLY the columns listed in the view schema. If a view answers the question, use ONLY that view and its database — ignore other tables from schemas.
+- No backticks, no database prefixes.
+- Specify the database in comment format on the first line: -- DB: DatabaseName
 
-EXEMPLOS:
+EXAMPLES:
 
-Custos e horas por propriedade em mv_plot_resource_full — CORRECTO (n_hora e custo_total, NAO total_horas nem total_custo):
--- BD: Plots
+Costs and hours per property in mv_plot_resource_full — CORRECT (n_hora and custo_total, NOT total_horas or total_custo):
+-- DB: Plots
 SELECT propriedade, tipo_recurso, SUM(n_hora) AS total_horas, SUM(custo_total) AS total_custo
 FROM mv_plot_resource_full
 WHERE id_entidade = X AND id_ano_agricola = Y
@@ -904,55 +904,55 @@ GROUP BY propriedade, tipo_recurso
 ORDER BY propriedade, tipo_recurso NULLS LAST
 LIMIT 50
 
-View de práticas/recursos — query CORRECTA:
--- BD: Plots
+Practices/resources view — CORRECT query:
+-- DB: Plots
 SELECT tipo_pratica, SUM(n_hora) AS horas, SUM(custo_total) AS custos
 FROM v_plot_resource_full
 WHERE tipo_recurso = 'Pratica Cultural Fito' AND id_entidade = X AND EXTRACT(YEAR FROM data_inicio) = 2025
 GROUP BY tipo_pratica
 ORDER BY horas DESC NULLS LAST
 
-View de parcelas — query CORRECTA (rega e armacao são colunas de texto):
--- BD: Operations
+Plots view — CORRECT query (rega and armacao are text columns):
+-- DB: Operations
 SELECT propriedade, parcela, area_total, rega
 FROM v_field_base
 WHERE id_entidade = X
 ORDER BY area_total DESC NULLS LAST
 LIMIT 50
 
-Filtrar por propriedade específica em view — CORRECTO:
--- BD: Operations
+Filter by specific property in view — CORRECT:
+-- DB: Operations
 SELECT parcela, armacao, embardamento, ano_plantacao
 FROM v_field_base
-WHERE propriedade ILIKE '%[NOME_PROPRIEDADE]%' AND id_entidade = X
+WHERE propriedade ILIKE '%[PROPERTY_NAME]%' AND id_entidade = X
 ORDER BY ano_plantacao DESC NULLS LAST
 LIMIT 50
 
-Tabela normal — query CORRECTA:
--- BD: Operations
+Normal table — CORRECT query:
+-- DB: Operations
 SELECT t.denominacao, r.denominacao AS referencia, t.area
 FROM tabela t
 JOIN tipo_referencia r ON r.gid = t.id_tipo_referencia
-WHERE r.denominacao ILIKE '%valor%' AND t.id_propriedade IN (SELECT gid FROM propriedade WHERE id_entidade = X)
+WHERE r.denominacao ILIKE '%value%' AND t.id_propriedade IN (SELECT gid FROM propriedade WHERE id_entidade = X)
 ORDER BY t.area DESC NULLS LAST
 LIMIT 50
 
 SQL:"""
 
-    _PIPELINE_FORMAT_PROMPT = """Formata os dados abaixo como resposta para um agricultor em português de Portugal.
-- É ESTRITAMENTE PROIBIDO apresentar o código SQL, referir nomes de tabelas, mencionar queries, ou detalhar a BD na tua resposta final. Apresenta apenas a informação para o utilizador.
-- Linguagem simples, sem termos técnicos.
-- Se a tabela estiver vazia (0 resultados) ou a query retornar vazia, responde "Não foram encontrados registos que correspondam aos critérios." e PÁRA. NUNCA dês desculpas nem exponhas SQL.
-- Cabeçalhos legíveis: "Nome" (não "denominacao"), "Área (ha)" (não "area_total").
-- Omite campos internos (gid, usercreate, userupdate, createdon, updatedon).
-- Mostra TODOS os resultados. NUNCA trunces.
-- Se 0 resultados → "Não foram encontrados registos que correspondam aos critérios."
+    _PIPELINE_FORMAT_PROMPT = """Format the data below as an answer for a farmer. Respond in English.
+- It is STRICTLY FORBIDDEN to present SQL code, refer to table names, mention queries, or detail the database in your final answer. Only present the information for the user.
+- Simple language, no technical terms.
+- If the table is empty (0 results) or the query returns empty, respond "No records were found matching the criteria." and STOP. NEVER apologize or expose SQL.
+- Readable headers: "Name" (not "denominacao"), "Area (ha)" (not "area_total").
+- Omit internal fields (gid, usercreate, userupdate, createdon, updatedon).
+- Show ALL results. NEVER truncate.
+- If 0 results → "No records were found matching the criteria."
 
-Pergunta: {question}
-Dados:
+Question: {question}
+Data:
 {data}
 
-Resposta:"""
+Answer:"""
 
     def _validate_and_fix_sql(self, sql: str, db_name: str, schemas_text: str, llm) -> str:
         """Valida sintaxe (sqlglot) e colunas (schemas em memória). Corrige via LLM se necessário."""
@@ -964,8 +964,8 @@ Resposta:"""
         except Exception as sg_err:
             print(f"[PIPELINE] Erro sintático (sqlglot): {sg_err}")
             fixed = llm.invoke(
-                f"A query SQL tem erro de sintaxe. Corrige-a. Responde APENAS com a query.\n"
-                f"Query: {sql}\nErro: {sg_err}\nSQL corrigido:"
+                f"The SQL query has a syntax error. Fix it. Respond with ONLY the query.\n"
+                f"Query: {sql}\nError: {sg_err}\nFixed SQL:"
             ).content.strip()
             fixed = re.sub(r'```sql\s*', '', fixed, flags=re.IGNORECASE)
             sql = re.sub(r'\s*```', '', fixed).strip()
@@ -1001,10 +1001,10 @@ Resposta:"""
                 real_table = alias_map[table_ref]
                 if real_table in known_cols and known_cols[real_table]:
                     if col_name not in known_cols[real_table] and col_name not in ("*",):
-                        bad_cols.append(f"{table_ref}.{col_name} (tabela: {real_table})")
+                        bad_cols.append(f"{table_ref}.{col_name} (table: {real_table})")
 
         if bad_cols:
-            print(f"[PIPELINE] Colunas inválidas detectadas: {bad_cols}")
+            print(f"[PIPELINE] Invalid columns detected: {bad_cols}")
 
             valid_cols_hint = []
             for alias, real_table in alias_map.items():
@@ -1014,12 +1014,12 @@ Resposta:"""
             valid_hint = "\n".join(valid_cols_hint)
 
             fix_prompt = (
-                f"A query SQL usa colunas que NÃO EXISTEM. Reescreve-a do zero usando APENAS as colunas listadas abaixo.\n"
-                f"Se uma tabela é uma view (v_* ou view_*), usa directamente as suas colunas de texto — NÃO faças JOIN a tabelas tipo_*.\n\n"
-                f"COLUNAS VÁLIDAS POR TABELA:\n{valid_hint}\n\n"
-                f"Colunas inválidas a remover: {', '.join(bad_cols)}\n\n"
-                f"Query original:\n{sql}\n\n"
-                f"Responde APENAS com o SQL corrigido, sem backticks, sem explicações:"
+                f"The SQL query uses columns that DO NOT EXIST. Rewrite it from scratch using ONLY the columns listed below.\n"
+                f"If a table is a view (v_* or view_*), use its text columns directly — do NOT JOIN tipo_* tables.\n\n"
+                f"VALID COLUMNS BY TABLE:\n{valid_hint}\n\n"
+                f"Invalid columns to remove: {', '.join(bad_cols)}\n\n"
+                f"Original query:\n{sql}\n\n"
+                f"Respond with ONLY the corrected SQL, no backticks, no explanations:"
             )
             fixed = llm.invoke(fix_prompt).content.strip()
             fixed = re.sub(r'```sql\s*', '', fixed, flags=re.IGNORECASE)
@@ -1082,22 +1082,22 @@ Resposta:"""
             ctx_parts.append(
                 f"Entidade: id_entidade = {entidade_id}. "
                 f"Filtra SEMPRE por esta entidade. Verifica no schema se a tabela tem id_entidade. "
-                f"Se NÃO tiver (ex: parcela), usa subquery: WHERE id_propriedade IN "
+                f"If it does NOT have it (e.g., parcela), use subquery: WHERE id_propriedade IN "
                 f"(SELECT gid FROM propriedade WHERE id_entidade = {entidade_id})."
             )
         if ano_agricola_id:
             ctx_parts.append(
-                f"ATENÇÃO: id_ano_agricola = {ano_agricola_id} é um ID interno, NÃO é um ano de calendário. "
-                f"Usa id_ano_agricola APENAS em tabelas/vistas que tenham explicitamente essa coluna. "
-                f"Para filtrar por ano em colunas de data (data_inicio, data_registo, etc.), usa o ano que o utilizador mencionou na pergunta (ex: 2025, 2024). "
-                f"NUNCA uses {ano_agricola_id} em EXTRACT(YEAR ...) ou em condições de data."
+                f"ATTENTION: id_ano_agricola = {ano_agricola_id} is an internal ID, NOT a calendar year. "
+                f"Use id_ano_agricola ONLY in tables/views that explicitly have that column. "
+                f"To filter by year on date columns (data_inicio, data_registo, etc.), use the year the user mentioned in the question (e.g., 2025, 2024). "
+                f"NEVER use {ano_agricola_id} in EXTRACT(YEAR ...) or in date conditions."
             )
         context = " ".join(ctx_parts) if ctx_parts else ""
 
-        #injectar exemplos similares
+        #inject similar examples
         few_shot_text = self._get_few_shot_examples(question, k=2)
         if few_shot_text:
-            context = context + "\n\nEXEMPLOS DE SQL CORRECTO PARA PADRÕES SIMILARES:\n" + few_shot_text if context else "EXEMPLOS DE SQL CORRECTO PARA PADRÕES SIMILARES:\n" + few_shot_text
+            context = context + "\n\nCORRECT SQL EXAMPLES FOR SIMILAR PATTERNS:\n" + few_shot_text if context else "CORRECT SQL EXAMPLES FOR SIMILAR PATTERNS:\n" + few_shot_text
 
         llm = ChatOllama(model=self.llm_model, temperature=0, num_ctx=cfg.SQL_NUM_CTX, num_predict=1024)
         sql_prompt = self._PIPELINE_SQL_PROMPT.format(
@@ -1122,7 +1122,7 @@ Resposta:"""
             db_name = view_dbs[0] if view_dbs else tables_found[0][0]
 
         if not raw_sql.upper().startswith(("SELECT", "WITH")):
-            print(f"[PIPELINE] SQL inválido: {raw_sql[:100]}")
+            print(f"[PIPELINE] SQL invalid: {raw_sql[:100]}")
             return None, None
 
         if db_name == "Plots":
@@ -1134,7 +1134,7 @@ Resposta:"""
                     raw_sql
                 )
                 if raw_sql_new != raw_sql:
-                    print(f"[PIPELINE] Substituído v_plot_resource_full → mv_plot_resource_full")
+                    print(f"[PIPELINE] Replaced v_plot_resource_full → mv_plot_resource_full")
                     raw_sql = raw_sql_new
 
         print(f"[PIPELINE] BD: {db_name}")
@@ -1146,36 +1146,36 @@ Resposta:"""
         sql_used = raw_sql
         for attempt in range(2):
             result = self._run_sql.invoke({"db_name": db_name, "query": sql_used})
-            if "ERRO SQL" not in result:
+            if "SQL ERROR" not in result:
                 break
             if attempt == 0:
-                print(f"[PIPELINE] Erro na tentativa {attempt+1}, a corrigir...")
+                print(f"[PIPELINE] Error on attempt {attempt+1}, fixing...")
                 fix_prompt = (
-                    f"A query SQL seguinte deu erro. Corrige-a usando APENAS as colunas dos schemas.\n"
-                    f"Responde APENAS com a query corrigida, sem explicações.\n\n"
-                    f"Query original:\n{sql_used}\n\nErro:\n{result}\n\n{schemas_text}\n\nSQL corrigido:"
+                    f"The following SQL query returned an error. Fix it using ONLY the columns from the schemas.\n"
+                    f"Respond with ONLY the corrected query, no explanations.\n\n"
+                    f"Original query:\n{sql_used}\n\nError:\n{result}\n\n{schemas_text}\n\nCorrected SQL:"
                 )
                 fixed = llm.invoke(fix_prompt).content.strip()
                 fixed = re.sub(r'```sql\s*', '', fixed, flags=re.IGNORECASE)
                 fixed = re.sub(r'\s*```', '', fixed)
                 sql_used = fixed.strip()
-                print(f"[PIPELINE] SQL corrigido: {sql_used}")
+                print(f"[PIPELINE] SQL corrected: {sql_used}")
 
         if not result or "ERRO SQL" in result:
-            print(f"[PIPELINE] Falhou após 2 tentativas, a cair no fallback")
+            print(f"[PIPELINE] Failed after 2 attempts, falling back")
             return None, None
 
-        print(f"[PIPELINE] A formatar resposta com Python...")
+        print(f"[PIPELINE] Formatting response with Python...")
         
         if not result or "0 linhas" in result or "ERRO" in result:
-            response = "Não foram encontrados registos que correspondam aos critérios."
+            response = "No records were found matching the criteria."
         else:
             response = result
 
-        print(f"[PIPELINE] Sucesso!")
+        print(f"[PIPELINE] Success!")
         return response, sql_used
 
-    # Contadores de métricas
+    # Metrics counters
     _metrics = {"pipeline_ok": 0, "pipeline_fail": 0, "fallback_ok": 0, "fallback_fail": 0, "cache_hit": 0}
 
     @classmethod
@@ -1185,10 +1185,10 @@ Resposta:"""
         if total == 0:
             return
         pipeline_rate = round(m["pipeline_ok"] / max(m["pipeline_ok"] + m["pipeline_fail"], 1) * 100)
-        print(f"\n[MÉTRICAS SQL] Total:{total} | Pipeline:{m['pipeline_ok']}✓ {m['pipeline_fail']}✗ ({pipeline_rate}%) | Fallback:{m['fallback_ok']}✓ {m['fallback_fail']}✗ | Cache:{m['cache_hit']}")
+        print(f"\n[SQL METRICS] Total:{total} | Pipeline:{m['pipeline_ok']}✓ {m['pipeline_fail']}✗ ({pipeline_rate}%) | Fallback:{m['fallback_ok']}✓ {m['fallback_fail']}✗ | Cache:{m['cache_hit']}")
 
     def answer(self, question, chat_history=None, entidade_id=None, ano_agricola_id=None):
-        """Pipeline controlado como primário; ReAct agent como fallback."""
+        """Controlled pipeline as primary; ReAct agent as fallback."""
         self._rebuild_agent_if_needed()
         start = time.time()
         cache_key = unicodedata.normalize("NFKD", question.strip().lower())
@@ -1201,7 +1201,7 @@ Resposta:"""
             if cached:
                 answer_c, sql_c, ts = cached
                 if time.time() - ts < self.CACHE_TTL:
-                    print(f"[CACHE HIT] '{question}' ({int(time.time() - ts)}s atrás)")
+                    print(f"[CACHE HIT] '{question}' ({int(time.time() - ts)}s ago)")
                     SQLAgentTools._metrics["cache_hit"] += 1
                     return answer_c, sql_c, time.time() - start
 
@@ -1216,10 +1216,10 @@ Resposta:"""
                 return resp, sql, elapsed
             SQLAgentTools._metrics["pipeline_fail"] += 1
         except Exception as e:
-            print(f"[PIPELINE ERRO]: {e} — a usar ReAct fallback")
+            print(f"[PIPELINE ERROR]: {e} — using ReAct fallback")
             SQLAgentTools._metrics["pipeline_fail"] += 1
 
-        print("[FALLBACK]: A usar ReAct agent")
+        print("[FALLBACK]: Using ReAct agent")
         prefetched, _ = self._prefetch_schemas(question)
         print(f"\n--- PREFETCH (FALLBACK) ---\n{prefetched}\n----------------\n")
 
@@ -1232,21 +1232,21 @@ Resposta:"""
             ctx_parts.append(prefetched)
         if entidade_id:
             ctx_parts.append(
-                f"Entidade: id_entidade = {entidade_id}. "
-                f"Filtra SEMPRE por esta entidade. Verifica no schema se a tabela tem id_entidade. "
-                f"Se NÃO tiver (ex: parcela), usa subquery: WHERE id_propriedade IN (SELECT gid FROM propriedade WHERE id_entidade = {entidade_id})."
+                f"Entity: id_entidade = {entidade_id}. "
+                f"ALWAYS filter by this entity. Check in the schema if the table has id_entidade. "
+                f"If it does NOT have it (e.g., parcela), use subquery: WHERE id_propriedade IN (SELECT gid FROM propriedade WHERE id_entidade = {entidade_id})."
             )
         if ano_agricola_id:
             ctx_parts.append(
-                f"ATENÇÃO: id_ano_agricola = {ano_agricola_id} é um ID interno, NÃO é um ano de calendário. "
-                f"Usa id_ano_agricola APENAS em tabelas/vistas que tenham explicitamente essa coluna (ex: pratica_cultural, rota, lote). "
-                f"Tabelas sem esta coluna (ex: parcela, propriedade, cuba) NÃO se filtram por ano. "
-                f"Para filtrar por ano em colunas de data, usa o ano que o utilizador mencionou na pergunta. "
-                f"NUNCA uses {ano_agricola_id} em EXTRACT(YEAR ...) ou em condições de data."
+                f"ATTENTION: id_ano_agricola = {ano_agricola_id} is an internal ID, NOT a calendar year. "
+                f"Use id_ano_agricola ONLY in tables/views that explicitly have that column (e.g., pratica_cultural, rota, lote). "
+                f"Tables without this column (e.g., parcela, propriedade, cuba) do NOT filter by year. "
+                f"To filter by year on date columns, use the year the user mentioned in the question. "
+                f"NEVER use {ano_agricola_id} in EXTRACT(YEAR ...) or in date conditions."
             )
         if ctx_parts:
-            ctx = "CONTEXTO DO UTILIZADOR: " + " ".join(ctx_parts)
-            messages_hist.append(HumanMessage(content=f"{ctx}\n\nPergunta: {question}"))
+            ctx = "USER CONTEXT: " + " ".join(ctx_parts)
+            messages_hist.append(HumanMessage(content=f"{ctx}\n\nQuestion: {question}"))
         else:
             messages_hist.append(HumanMessage(content=question))
         from langgraph.errors import GraphRecursionError
@@ -1259,9 +1259,9 @@ Resposta:"""
                 )
             except GraphRecursionError:
                 elapsed = time.time() - start
-                return "A pergunta é demasiado complexa para ser processada automaticamente. Tenta reformulá-la de forma mais directa ou divide-a em partes mais simples.", "", elapsed
+                return "The question is too complex to be processed automatically. Try rephrasing it more directly or break it into simpler parts.", "", elapsed
             messages = result["messages"]
-            final_response = messages[-1].content if messages else "Sem resposta."
+            final_response = messages[-1].content if messages else "No response."
             last_msg_has_tool = hasattr(messages[-1], 'tool_calls') and len(messages[-1].tool_calls) > 0
             sql_used = ""
             for msg in messages:
@@ -1271,18 +1271,18 @@ Resposta:"""
                             sql_used = tc.get('args', {}).get('query', '')
             if not last_msg_has_tool:
                 lower_resp = final_response.lower()
-                if any(w in lower_resp for w in ["vou agora", "escrever uma query", "verificar a relação", "precisamos primeiro", "escrever a query", "tentar novamente", "vou verificar", "vou abrir", "vou executar", "ocorreu um erro", "parece que houve"]):
-                    print("\n[PYTHON RETRY]: IA parou prematuramente a divagar. A forçar a tool_call...")
-                    messages_hist = messages + [HumanMessage(content="ERRO INTERNO: Respondeste com o texto do teu plano mas esqueceste-te de emitir a ferramenta real (tool_call JSON). Emite APENAS a ferramenta agora sem pedir desculpa.")]
+                if any(w in lower_resp for w in ["i will now", "write a query", "check the relationship", "we first need", "write the query", "try again", "i will check", "i will open", "i will execute", "an error occurred", "it seems there was"]):
+                    print("\n[PYTHON RETRY]: LLM stopped prematurely rambling. Forcing tool_call...")
+                    messages_hist = messages + [HumanMessage(content="INTERNAL ERROR: You responded with text of your plan but forgot to emit the actual tool (tool_call JSON). Emit ONLY the tool now without apologizing.")]
                     continue
             break
-        print("\n--- PENSAMENTO DA LLM ---")
+        print("\n--- LLM THOUGHT ---")
         for msg in messages:
             if hasattr(msg, 'content') and msg.content:
                 print(f"[{msg.__class__.__name__}]: {msg.content}")
             if hasattr(msg, 'tool_calls') and msg.tool_calls:
                 for tc in msg.tool_calls:
-                    print(f"[A Executar Tool]: {tc['name']} com args {tc['args']}")
+                    print(f"[Executing Tool]: {tc['name']} with args {tc['args']}")
         print("-------------------------\n")
         sql_used = ""
         for msg in messages:
@@ -1296,9 +1296,9 @@ Resposta:"""
             if sql_match:
                 sql_used = sql_match.group(1).strip()
                 db_name = "Operations" if "monitorizacao" in final_response.lower() else "Plots"
-                print(f"\n[FALLBACK SQL DETETADO]: Executando '{sql_used}' na BD '{db_name}'...")
+                print(f"\n[FALLBACK SQL DETECTED]: Running '{sql_used}' on DB '{db_name}'...")
                 fallback_result = self._run_sql.invoke({"db_name": db_name, "query": sql_used})
-                final_response = f"**Dados calculados automaticamente pelo Fallback:**\n\n{fallback_result}\n\n*Nota: O modelo comportou-se de forma não esperada, mas a resposta foi contornada com sucesso.*"
+                final_response = f"**Data calculated automatically by Fallback:**\n\n{fallback_result}\n\n*Note: The model behaved unexpectedly, but the response was successfully handled.*"
         final_response = re.sub(r'```sql[\s\S]*?```', '', final_response, flags=re.IGNORECASE)
         final_response = re.sub(r'```[\s\S]*?```', '', final_response)
         final_response = re.sub(r'(?im)^\s*(SELECT|WITH)\s+.*?(FROM|JOIN)\b.*$', '', final_response)
@@ -1306,18 +1306,18 @@ Resposta:"""
         final_response = re.sub(r'ERRO SQL\s*\[.*?\]:.*', '', final_response, flags=re.IGNORECASE)
         final_response = re.sub(r'DICA DO SISTEMA:.*', '', final_response, flags=re.IGNORECASE)
         final_response = re.sub(
-            r'(Vou agora|Para determinar|Precisamos primeiro|Desculp[ea] pela confus|'
-            r'parece que houve um erro|tabela.*não encontrada|Vou.*verificar|Vou.*abrir|'
-            r'Após várias tentativas|Vou corrigir|Aqui está a query|Vou executar|'
-            r'Vou usar a ferramenta|Vamos executar|não é um ID numérico|'
-            r'Os resultados da consulta|caminho de JOINs|A consulta retornou)[^\n]*',
+            r'(I will now|To determine|We need to first|Sorry for the confusion|'
+            r'it seems there was an error|table.*not found|I.*will check|I.*will open|'
+            r'After several attempts|I will fix|Here is the query|I will execute|'
+            r'I will use the tool|Let us execute|is not a numeric ID|'
+            r'The query results|path of JOINs|The query returned)[^\n]*',
             '', final_response, flags=re.IGNORECASE
         ).strip()
         final_response = re.sub(r'`[a-z_]+`', '', final_response).strip()
         final_response = re.sub(r'[ \t]{2,}', ' ', final_response).strip()
         final_response = re.sub(r'\n{3,}', '\n\n', final_response).strip()
         if not final_response:
-            final_response = "Desculpa, a tua instrução parece necessitar de cruzar demasiados dados em simultâneo. Podes tentar fazer a pergunta de forma mais direta ou dividi-la em partes mais pequenas?"
+            final_response = "Sorry, your request seems to require joining too many data sources at once. Could you try rephrasing it more directly or break it into smaller parts?"
         if not chat_history and sql_used:
             self._cache[cache_key] = (final_response, sql_used, time.time())
         elapsed = time.time() - start
