@@ -30,69 +30,125 @@ A production-grade AI assistant that answers natural language questions about ag
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    User["User Question"] --> Condense["Condense Question\n(resolve pronouns, follow-ups)"]
-    Condense --> Classifier{"Query Classifier\n(keyword-based)"}
+```plantuml
+@startuml
+skinparam backgroundColor #0d1117
+skinparam defaultFontColor #c9d1d9
+skinparam defaultFontSize 12
+skinparam arrowColor #e94560
+skinparam rectangleBackgroundColor #161b22
+skinparam rectangleBorderColor #30363d
+skinparam rectangleFontColor #c9d1d9
+skinparam databaseBackgroundColor #161b22
+skinparam databaseBorderColor #e94560
+skinparam databaseFontColor #c9d1d9
+skinparam cloudBackgroundColor #161b22
+skinparam cloudBorderColor #e94560
+skinparam cloudFontColor #c9d1d9
+skinparam noteBackgroundColor #161b22
+skinparam noteBorderColor #30363d
+skinparam noteFontColor #c9d1d9
+skinparam actorBackgroundColor #161b22
+skinparam actorBorderColor #e94560
+skinparam actorFontColor #c9d1d9
 
-    Classifier -->|"RAG"| RAG["RAG Pipeline"]
-    Classifier -->|"SQL"| SQL["SQL Pipeline"]
-    Classifier -->|"BOTH"| BOTH["Merge RAG + SQL"]
-    Classifier -->|"GREETING/CHITCHAT"| CHAT["Static Response"]
-    Classifier -->|"META"| META["Modules Overview"]
+title LLM RAG + SQL Chatbot Architecture
 
-    %% RAG Pipeline
-    RAG --> Retriever["Hybrid Retriever\nBM25 + MMR"]
-    Retriever --> ChromaDB[("ChromaDB\n3 Collections")]
-    ChromaDB --> LLM_RAG["Ollama Qwen2.5 7B"]
-    LLM_RAG --> Stream_RAG["SSE Token Stream"]
+rectangle "User Question" as User #161b22
 
-    %% SQL Pipeline
-    subgraph SQL_PIPELINE["SQL Pipeline (Controlled)"]
-        direction TB
-        SQL_Start["Question"] --> DomainSearch["Domain Search\nBM25 + MMR Hybrid"]
-        DomainSearch --> SchemaPruning{"Schema Pruning\n(max 4 tables)"}
-        SchemaPruning --> ViewInjection["View Injection\n(v_cellar_*, mv_plot_*)"]
-        ViewInjection --> FewShot["Few-shot Retrieval\ncosine similarity"]
-        FewShot --> GenSQL["SQL Generation\nOllama Qwen2.5 7B"]
-        GenSQL --> Validate["Validate & Fix\nsqlglot + column check"]
-        Validate --> Execute["Execute SQL\nPostgreSQL (10s timeout)"]
-        Execute --> Retry{"Error?"}
-        Retry -->|"Yes (1 retry)"| FixLLM["LLM Auto-correct"]
-        FixLLM --> Execute
-        Retry -->|"No"| Format["Format as Markdown"]
-    end
+rectangle "Condense Question\n(resolve pronouns, follow-ups)" as Condense #161b22
 
-    SQL --> SQL_PIPELINE
-    SQL_PIPELINE --> Stream_SQL["SSE Token Stream"]
-    SQL_PIPELINE -->|"Failed"| Fallback
+rectangle "Query Classifier\n(keyword-based)" as Classifier #161b22
 
-    %% Fallback
-    subgraph FALLBACK["ReAct Agent (Fallback)"]
-        direction TB
-        Agent["LangGraph Agent"] --> Tool1["search_tables"]
-        Agent --> Tool2["get_table_schema"]
-        Agent --> Tool3["sample_table_data"]
-        Agent --> Tool4["run_sql"]
-        Agent --> Tool5["find_join_path"]
-    end
+rectangle "RAG Pipeline" as RAG #161b22
+rectangle "SQL Pipeline" as SQL #161b22
+rectangle "Merge RAG + SQL" as BOTH #161b22
+rectangle "Static Response" as CHAT #161b22
+rectangle "Modules Overview" as META #161b22
 
-    Fallback["Fallback Triggered"] --> FALLBACK
-    FALLBACK --> Stream_FB["SSE Token Stream"]
+' RAG Pipeline
+rectangle "Hybrid Retriever\nBM25 + MMR" as Retriever #161b22
+database "ChromaDB\n3 Collections" as ChromaDB #161b22
+rectangle "Ollama Qwen2.5 7B" as LLM_RAG #161b22
+rectangle "SSE Token Stream" as Stream_RAG #161b22
 
-    %% BOTH
-    BOTH --> RAG
-    BOTH --> SQL
-    RAG --> Merge["Merge Responses\n(LLM or Concatenate)"]
-    SQL --> Merge
-    Merge --> Stream_Merge["SSE Token Stream"]
+' SQL Pipeline
+package "SQL Pipeline (Controlled)" as SQL_PIPELINE #1a1a2e;line:e94560 {
+  rectangle "Domain Search\nBM25 + MMR Hybrid" as DomainSearch #161b22
+  rectangle "Schema Pruning\n(max 4 tables)" as SchemaPruning #161b22
+  rectangle "View Injection\n(v_cellar_*, mv_plot_*)" as ViewInjection #161b22
+  rectangle "Few-shot Retrieval\ncosine similarity" as FewShot #161b22
+  rectangle "SQL Generation\nOllama Qwen2.5 7B" as GenSQL #161b22
+  rectangle "Validate & Fix\nsqlglot + column check" as Validate #161b22
+  rectangle "Execute SQL\nPostgreSQL (10s timeout)" as Execute #161b22
+  rectangle "Error?" as Retry #161b22
+  rectangle "LLM Auto-correct" as FixLLM #161b22
+  rectangle "Format as Markdown" as Format #161b22
+}
 
-    %% Styling
-    style SQL_PIPELINE fill:#1a1a2e,stroke:#e94560,color:#fff
-    style FALLBACK fill:#1a1a2e,stroke:#e94560,color:#fff
-    style Classifier fill:#16213e,stroke:#0f3460,color:#fff
-    style Retry fill:#16213e,stroke:#0f3460,color:#fff
-    style SchemaPruning fill:#16213e,stroke:#0f3460,color:#fff
+rectangle "SSE Token Stream" as Stream_SQL #161b22
+
+' Fallback
+package "ReAct Agent (Fallback)" as FALLBACK #1a1a2e;line:e94560 {
+  rectangle "LangGraph Agent" as Agent #161b22
+  rectangle "search_tables" as Tool1 #161b22
+  rectangle "get_table_schema" as Tool2 #161b22
+  rectangle "sample_table_data" as Tool3 #161b22
+  rectangle "run_sql" as Tool4 #161b22
+  rectangle "find_join_path" as Tool5 #161b22
+}
+
+rectangle "Fallback Triggered" as Fallback #161b22
+rectangle "SSE Token Stream" as Stream_FB #161b22
+
+' Merge
+rectangle "Merge Responses\n(LLM or Concatenate)" as Merge #161b22
+rectangle "SSE Token Stream" as Stream_Merge #161b22
+
+' Flow
+User --> Condense
+Condense --> Classifier
+
+Classifier --> RAG : RAG
+Classifier --> SQL : SQL
+Classifier --> BOTH : BOTH
+Classifier --> CHAT : GREETING/CHITCHAT
+Classifier --> META : META
+
+RAG --> Retriever
+Retriever --> ChromaDB
+ChromaDB --> LLM_RAG
+LLM_RAG --> Stream_RAG
+
+SQL --> SQL_PIPELINE
+DomainSearch --> SchemaPruning
+SchemaPruning --> ViewInjection
+ViewInjection --> FewShot
+FewShot --> GenSQL
+GenSQL --> Validate
+Validate --> Execute
+Execute --> Retry
+Retry --> FixLLM : Yes (1 retry)
+FixLLM --> Execute
+Retry --> Format : No
+SQL_PIPELINE --> Stream_SQL
+SQL_PIPELINE --> Fallback : Failed
+
+Fallback --> FALLBACK
+Agent --> Tool1
+Agent --> Tool2
+Agent --> Tool3
+Agent --> Tool4
+Agent --> Tool5
+FALLBACK --> Stream_FB
+
+BOTH --> RAG
+BOTH --> SQL
+RAG --> Merge
+SQL --> Merge
+Merge --> Stream_Merge
+
+@enduml
 ```
 
 ### Pipeline Statistics (Live)
