@@ -1,6 +1,32 @@
-# LLM RAG + SQL Chatbot
+# LLM RAG + SQL Chatbot (Sanitized Version From Internship, Some Features Haven't Been Added)
 
 A production-grade AI assistant that answers natural language questions about agricultural data by combining **RAG (Retrieval-Augmented Generation)** for documentation with a **Text-to-SQL Agent** for querying multiple PostgreSQL databases. Fully local, privacy-first, built with LangChain, ChromaDB, and Ollama.
+
+## Interesting Graphs
+
+### 1 User VS 5 Users at the same time (Graph is in Portuguese)
+
+<img width="3000" height="1800" alt="grafico_comparacao_1_vs_5" src="https://github.com/user-attachments/assets/95ceffbb-a178-44a0-bca7-bbb47fbc3552" />
+
+### Latency under 5 concurrent users (Graph is in Portuguese)
+
+<img width="3000" height="1500" alt="grafico_evolucao_5_users" src="https://github.com/user-attachments/assets/64841acb-d4de-4a78-afc3-79844550569b" />
+
+### Accuracy by RAG Strategy (Graph is in Portuguese)
+
+<img width="1200" height="750" alt="1_accuracy" src="https://github.com/user-attachments/assets/e2f7d1d1-50e5-4903-814d-6aafaee12290" />
+
+### Latency by RAG Strategy (Graph is in Portuguese)
+
+<img width="1200" height="750" alt="3_latency" src="https://github.com/user-attachments/assets/635fa31d-1bd9-4ad6-ad9b-73161c9f6bc4" />
+
+### Latency VS Accuracy by RAG Strategy (Graph is in Portuguese)
+
+<img width="1200" height="825" alt="5_pareto" src="https://github.com/user-attachments/assets/f0eb7ba4-33f6-4a3e-ad6b-09ffa72cc930" />
+
+### Optimizations Evolution
+
+<img width="3570" height="1815" alt="golden_set_evolution" src="https://github.com/user-attachments/assets/622d0913-3618-4cce-85d8-4e07c25be4c5" />
 
 ## Architecture
 
@@ -133,8 +159,6 @@ The system tracks pipeline performance in real-time:
 | **Database** | PostgreSQL × 3 (psycopg2 + SQLAlchemy engines) |
 | **Frontend** | Vanilla HTML/CSS/JS with SSE streaming |
 | **Observability** | Langfuse (optional) |
-| **Testing** | pytest, Locust (load testing) |
-| **NLP** | spaCy, sentence-transformers |
 
 ## Project Structure
 
@@ -190,11 +214,7 @@ ollama pull qwen2.5:7b
 
 ### Configuration
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
+Create `.env`:
 ```env
 DB_OPERATIONS_URL=postgresql://user:password@host:5432/operations
 DB_PLOTS_URL=postgresql://user:password@host:5432/plots
@@ -263,24 +283,6 @@ If the controlled pipeline fails (schema pruning miss, complex joins, etc.), a L
 - `run_sql` — execute SELECT queries with 10s timeout
 - `find_join_path` — discover FK paths via NetworkX graph traversal
 
-## Benchmarks
-
-```bash
-# Unit tests
-python -m pytest tests/ -v
-
-# RAG evaluation (retrieval accuracy)
-python benchmarks/eval_rag.py
-
-# SQL golden set evaluation
-python benchmarks/eval_golden_set.py
-
-# Vector store scalability
-python benchmarks/eval_vectorstore.py
-
-# Load testing (Locust)
-python benchmarks/load_test.py
-```
 
 ## Design Decisions
 
@@ -303,3 +305,8 @@ python benchmarks/load_test.py
 - **Server GPU scaling**: Migration to higher VRAM GPUs for parallel inference and larger models
 - **Continuous evaluation**: LLM-as-Judge automatic regression testing from production queries
 - **Fine-tuning**: Supervised fine-tuning of Qwen2.5 7B on domain-specific question-SQL pairs via Unsloth
+
+
+
+
+
